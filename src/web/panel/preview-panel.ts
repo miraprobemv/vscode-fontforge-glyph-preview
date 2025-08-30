@@ -44,7 +44,7 @@ export class PreviewPanel {
     private initializeWebviewPanel(): vscode.WebviewPanel {
         const panel = vscode.window.createWebviewPanel(
             "fontforgeGlyphPreview",
-            "Fontforge Glyph Preview",
+            "FontForge Glyph Preview",
             vscode.ViewColumn.Beside,
             { enableScripts: true },
         );

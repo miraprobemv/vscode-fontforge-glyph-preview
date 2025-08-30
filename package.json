@@ -1,14 +1,25 @@
 {
   "name": "fontforge-glyph-preview",
-  "displayName": "fontforge-glyph-preview",
-  "description": "Preview Fontforge .glyph file data",
+  "displayName": "FontForge Glyph Preview",
+  "description": "Preview glyph images contained in Spline Font Database files (*.sdf, *.glyph) used by FontForge",
+  "publisher": "miraprovemv",
+  "icon": "images/icon.png",
+  "homepage": "https://github.com/miraprobemv/vscode-fontforge-glyph-preview",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/miraprobemv/vscode-fontforge-glyph-preview.git"
+  },
+  "bugs": {
+    "url": "https://github.com/miraprobemv/vscode-fontforge-glyph-preview/issues"
+  },
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.103.0"
   },
   "categories": [
-    "Other"
+    "Visualization"
   ],
+  "keywords": ["fontforge", "font"],
   "activationEvents": [],
   "browser": "./dist/web/extension.js",
   "contributes": {
@@ -20,7 +31,7 @@
     "commands": [
       {
         "command": "fontforge-glyph-preview.showPreview",
-        "title": "Fontforge Glyph Preview: Preview SFD Glyph",
+        "title": "FontForge Glyph Preview: Preview SFD Glyph",
         "icon": "$(open-preview)"
       }
     ],

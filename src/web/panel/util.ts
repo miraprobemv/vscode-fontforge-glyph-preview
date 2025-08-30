@@ -23,7 +23,7 @@ export function getParentUri(baseUri: vscode.Uri): vscode.Uri {
 
 // デバッグ情報表示用
 const isDebug = process.env.VSCODE_DEBUG_MODE === "true";
-const outputChannel = isDebug ? null : vscode.window.createOutputChannel("Fontforge Glyph Preview");
+const outputChannel = isDebug ? null : vscode.window.createOutputChannel("FontForge Glyph Preview");
 export function writeDebugLog(message: string) {
     outputChannel?.appendLine(
         (new Date().toISOString()) + " [debug] > " + message,

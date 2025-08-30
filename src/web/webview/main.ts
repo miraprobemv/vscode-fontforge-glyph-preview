@@ -16,7 +16,7 @@ setupResizeFinishedEvent();
 const writeDebugLog = (message: string) =>
     postMessage(vscode, "writeDebugLog", { message });
 
-writeDebugLog("Fontforge Glyph Preview is under initializing ...");
+writeDebugLog("FontForge Glyph Preview is under initializing ...");
 
 const sideMenu = document.getElementById("side-menu")!;
 const openSideMenuButton = document.getElementById("open-side-menu-button")! as HTMLButtonElement;
