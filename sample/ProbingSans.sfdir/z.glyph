@@ -1,0 +1,21 @@
+StartChar: z
+Encoding: 122 122 36
+Width: 550
+Flags: W
+HStem: 4 60<168.095 466> 441 60<84 381.905>
+LayerCount: 2
+Fore
+SplineSet
+168.095343681 64 m 1
+ 466 64 l 1
+ 466 4 l 1
+ 75 4 l 1
+ 75 50 l 1
+ 381.904656319 441 l 1
+ 84 441 l 1
+ 84 501 l 1
+ 475 501 l 1
+ 475 455 l 1
+ 168.095343681 64 l 1
+EndSplineSet
+EndChar

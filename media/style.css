@@ -1,0 +1,134 @@
+* {
+    box-sizing: border-box;
+}
+
+/* fallback */
+:root {
+    --axis-color: var(--vscode-chart-axis, #11111166);
+    --font-width-line-color: var(--vscode-chart-axis, #11111166);
+    --background-color: var(--vscode-editor-background, #fafafa);
+    --foreground-color: var(--vscode-editor-foreground, #111111);
+    --glyph-stroke-color: var(--vscode-editor-foreground, #111111);
+    --glyph-fill-color: color-mix(in srgb, var(--vscode-editor-foreground, #111111) 20%, transparent);
+    --point-color: var(--vscode-debugTokenExpression-value, #111111aa);
+    --forward-handle-color: var(--vscode-debugTokenExpression-type, #336677);
+    --backward-handle-color: var(--vscode-debugTokenExpression-name, #773366);
+    --refer-glyph-stroke-color: var(--vscode-textLink-foreground, #3388cc);
+    --refer-glyph-fill-color: color-mix(in srgb, var(--vscode-textLink-foreground, #3388cc) 20%, transparent);
+    --ui-shadow-color: var(--vscode-sideBar-shadow, #00000033);
+    --default-font-size: var(--vscode-font-size, 14px);
+    --default-line-height: calc(var(--default-font-size) * 1.5);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--background-color);
+    color: var(--foreground-color);
+    font-size: var(--default-font-size);
+    line-height: var(--default-line-height);
+    font-family: var(--vscode-editor-font-family);
+    height: 100dvh;
+}
+
+header {
+    width: 100%;
+    height: calc(var(--default-line-height) * 2 + 10px);
+    background-color: var(--background-color);
+    color: var(--foreground-color);
+    box-sizing: border-box;
+    padding: 0 10px;
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+}
+
+.file-name-container {
+    padding: 0 10px;
+    font-weight: bold;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.open-side-menu-button {
+    background: none;
+    border: none;
+    color: var(--foreground-color);
+    cursor: pointer;
+    margin-left: 8px;
+    padding: 5px 10px;
+}
+.open-side-menu-button:disabled {
+    color: color-mix(in srgb, var(--foreground-color) 35%, transparent);
+    cursor: unset;
+}
+
+.side-menu {
+    position: fixed;
+    top: calc(var(--default-line-height) * 2 + 10px);
+    left: 0;
+    width: 300px;
+    height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
+    background-color: var(--background-color);
+    color: var(--foreground-color);
+    box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    overflow-y: auto;
+    z-index: 1000;
+}
+.side-menu._closed {
+    display: none;
+}
+
+.side-menu .glyph-list-container {
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.side-menu .glyph-list-container ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.side-menu .glyph-list-container ul li {
+    padding: 1px 12px 3px;
+    cursor: pointer;
+}
+.side-menu .glyph-list-container ul li:hover {
+    background-color: var(--foreground-color);
+    color: var(--background-color);
+}
+
+.glyph-image .glyph-svg {
+    vertical-align: top;
+    object-fit: contain;
+    width: 100vw;
+    height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
+}
+
+.glyph-image .axis {
+    stroke: var(--axis-color);
+}
+.glyph-image .font-width-line {
+    stroke: var(--font-width-line-color);
+}
+.glyph-image .glyph-path {
+    fill: var(--glyph-fill-color);
+    stroke: var(--glyph-stroke-color);
+}
+.glyph-image .refer-glyph-path {
+    fill: var(--refer-glyph-fill-color);
+    stroke: var(--refer-glyph-stroke-color);
+}
+.glyph-image .glyph-start-point {
+    stroke: var(--point-color);
+}
+.glyph-image .glyph-point {
+    fill: var(--point-color);
+    stroke: var(--point-color);
+}
+.glyph-image .glyph-forward-handle {
+    stroke: var(--forward-handle-color);
+}
+.glyph-image .glyph-backward-handle {
+    stroke: var(--backward-handle-color);
+}

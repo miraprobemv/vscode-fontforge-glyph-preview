@@ -1,0 +1,102 @@
+SplineFontDB: 3.2
+FontName: ProbingSans-Regular
+FullName: Probing Sans Regular
+FamilyName: ProbingSans
+Weight: Regular
+Copyright: Copyright (c) 2023-2025, Mira, the Multiverse Probe
+UComments: "2023-6-27: Created with FontForge (http://fontforge.org)"
+Version: 001.000
+ItalicAngle: 0
+UnderlinePosition: -180
+UnderlineWidth: 50
+Ascent: 790
+Descent: 234
+InvalidEm: 0
+LayerCount: 2
+Layer: 0 0 "+gMyXYgAA" 1
+Layer: 1 0 "+Uk2XYgAA" 0
+XUID: [1021 998 -886551286 21182]
+StyleMap: 0x0000
+FSType: 0
+OS2Version: 0
+OS2_WeightWidthSlopeOnly: 0
+OS2_UseTypoMetrics: 1
+CreationTime: 1687834375
+ModificationTime: 1753274088
+PfmFamily: 33
+TTFWeight: 400
+TTFWidth: 5
+LineGap: 492
+VLineGap: 92
+OS2TypoAscent: 0
+OS2TypoAOffset: 1
+OS2TypoDescent: 0
+OS2TypoDOffset: 1
+OS2TypoLinegap: 492
+OS2WinAscent: 200
+OS2WinAOffset: 1
+OS2WinDescent: 200
+OS2WinDOffset: 1
+HheadAscent: 200
+HheadAOffset: 1
+HheadDescent: -200
+HheadDOffset: 1
+OS2Vendor: 'PfEd'
+Lookup: 4 0 1 "latin_liga" { "latin_liga-1"  } ['liga' ('DFLT' <'dflt' > 'latn' <'dflt' > ) ]
+MarkAttachClasses: 1
+DEI: 91125
+LangName: 1033
+Encoding: UnicodeBmp
+UnicodeInterp: none
+NameList: AGL For New Fonts
+DisplaySize: -36
+AntiAlias: 1
+FitToEm: 0
+WinInfo: 0 32 8
+BeginPrivate: 0
+EndPrivate
+Grid
+-92 252 m 25
+ 658 252 l 1049
+-90 702 m 25
+ 1077 702 l 1049
+-92 327 m 29
+ 658 327 l 1053
+-92 169 m 25
+ 658 169 l 1049
+105 -258 m 25
+ 105 798 l 25
+ 105 -258 l 25
+455 -258 m 25
+ 455 798 l 25
+ 455 -258 l 25
+125 -258 m 25
+ 125 798 l 25
+ 125 -258 l 25
+-90 480 m 25
+ 1077 480 l 1049
+1077 476 m 25
+ -90 476 l 25
+ 1077 476 l 25
+-90 26 m 25
+ 1077 26 l 1049
+1077 30 m 25
+ -90 30 l 25
+ 1077 30 l 25
+92 798 m 25
+ 92 -258 l 1049
+-90 708 m 25
+ 1077 708 l 1049
+-90 -152 m 25
+ 1077 -152 l 1049
+-90 0 m 25
+ 1077 0 l 1049
+-90 734 m 25
+ 1077 734 l 1049
+-90 -178 m 25
+ 1077 -178 l 1049
+-90 506 m 25
+ 1077 506 l 1049
+EndSplineSet
+TeXData: 1 0 0 307200 153600 102400 518144 1048576 102400 783286 444596 497025 792723 393216 433062 380633 303038 157286 324010 404750 52429 2506097 1059062 262144
+EndSplineFont

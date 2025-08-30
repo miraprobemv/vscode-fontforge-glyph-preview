@@ -1,0 +1,9 @@
+{
+	"extends": "./tsconfig.base.json",
+	"include": ["src/web/webview/**/*"],
+	"compilerOptions": {
+		"lib": [
+			"ES2020", "DOM"
+		],
+	},
+}

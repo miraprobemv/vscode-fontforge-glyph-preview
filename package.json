@@ -1,0 +1,64 @@
+{
+  "name": "fontforge-glyph-preview",
+  "displayName": "fontforge-glyph-preview",
+  "description": "Preview Fontforge .glyph file data",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "browser": "./dist/web/extension.js",
+  "contributes": {
+    "languages": [{
+        "id": "sfd",
+        "aliases": ["Spline Font Database", "sfd"],
+        "extensions": [".sfd", ".glyph"]
+    }],
+    "commands": [
+      {
+        "command": "fontforge-glyph-preview.showPreview",
+        "title": "Fontforge Glyph Preview: Preview SFD Glyph",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "fontforge-glyph-preview.showPreview",
+          "when": "editorLangId == sfd",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "test": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js",
+    "pretest": "npm run compile-web",
+    "vscode:prepublish": "npm run package-web",
+    "compile-web": "webpack",
+    "watch-web": "webpack --watch",
+    "package-web": "webpack --mode production --devtool hidden-source-map",
+    "lint": "eslint src",
+    "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.103.0",
+    "@types/mocha": "^10.0.10",
+    "@types/assert": "^1.5.11",
+    "eslint": "^9.32.0",
+    "@typescript-eslint/eslint-plugin": "^8.39.0",
+    "@typescript-eslint/parser": "^8.39.0",
+    "mocha": "^11.7.1",
+    "typescript": "^5.9.2",
+    "@vscode/test-web": "^0.0.72",
+    "ts-loader": "^9.5.2",
+    "webpack": "^5.101.0",
+    "webpack-cli": "^6.0.1",
+    "@types/webpack-env": "^1.18.8",
+    "assert": "^2.1.0",
+    "process": "^0.11.10"
+  }
+}
