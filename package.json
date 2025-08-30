@@ -2,7 +2,7 @@
   "name": "fontforge-glyph-preview",
   "displayName": "FontForge Glyph Preview",
   "description": "Preview glyph images contained in Spline Font Database files (*.sdf, *.glyph) used by FontForge",
-  "publisher": "miraprovemv",
+  "publisher": "miraprobemv",
   "icon": "images/icon.png",
   "homepage": "https://github.com/miraprobemv/vscode-fontforge-glyph-preview",
   "repository": {
