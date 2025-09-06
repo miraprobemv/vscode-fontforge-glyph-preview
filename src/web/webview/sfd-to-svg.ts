@@ -13,7 +13,12 @@ type HandleData = {
     forward: boolean;
 };
 
-// Function to create the glyph
+/**
+ * 指定されたコンテナに文字の SVG 画像を表示する。
+ * @param container SVG を表示するコンテナ
+ * @param gid 表示する文字の Glyph ID
+ * @param getGlyphDataAsync 文字情報を取得するための関数
+ */
 export async function showGlyphSvgAsync(
     container: HTMLElement,
     gid: number,
@@ -51,16 +56,16 @@ export async function showGlyphSvgAsync(
     const coordinateSystem = createCoordinateSystemSvgElement(viewBox);
     svg.appendChild(coordinateSystem);
 
-    if (refers.length > 0) {
-        const referElements = await createReferGlyphSvgElementsAsync(refers, scale, getGlyphDataAsync);
-        for (const element of referElements) {
-            coordinateSystem.appendChild(element);
-        }
-    }
-
     const axisElements = createAxisSvgElements(viewBox, fontWidth, scale);
     for (const element of axisElements) {
         coordinateSystem.appendChild(element);
+    }
+
+    if (refers.length > 0) {
+        const referElements = await parseReferGlyphToSvgElementsAsync(refers, scale, getGlyphDataAsync);
+        for (const element of referElements) {
+            coordinateSystem.appendChild(element);
+        }
     }
 
     const pathElements = parsePathToSvgElements(splineSet, scale, "glyph-path");
@@ -79,56 +84,80 @@ export async function showGlyphSvgAsync(
     }
 }
 
-function createSvgElement(
-    tag: string,
-    attributes: { [key: string]: any } = {},
-) {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", tag);
-    for (const [key, value] of Object.entries(attributes)) {
-        svg.setAttribute(key, value);
+// --------------------------------------------------------------------------
+// SFD データ抽出
+
+function extractFontWidth(lines: string[]): number {
+    for (const line of lines) {
+        if (line.startsWith("Width:")) {
+            const width = parseFloat(line.split(":")[1].trim());
+            return width;
+        }
     }
-    return svg;
+    return 0; // Default value if not found
 }
 
-function mergeViewBox(viewBox1: ViewBox, viewBox2: ViewBox): ViewBox {
-    const [minX1, minY1, width1, height1] = viewBox1;
-    const maxX1 = width1 - minX1;
-    const maxY1 = height1 - minY1;
-    const [minX2, minY2, width2, height2] = viewBox2;
-    const maxX2 = width2 - minX2;
-    const maxY2 = height2 - minY2;
-
-    const minX = Math.min(minX1, minX2);
-    const minY = Math.min(minY1, minY2);
-    const maxX = Math.max(maxX1, maxX2);
-    const maxY = Math.max(maxY1, maxY2);
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    return [minX, minY, width, height];
+function extractLayerData(section: string, lines: string[]) {
+    let inSection = false;
+    let inSplineSet = false;
+    const refers = [];
+    const splineSet = [];
+    for (const line of lines) {
+        if (line.startsWith(section)) {
+            inSection = true;
+            continue;
+        }
+        if (inSection) {
+            if (line.startsWith("Refer:")) {
+                refers.push(line);
+                continue;
+            } else if (line.startsWith("SplineSet")) {
+                inSplineSet = true;
+                continue;
+            } else if (line.startsWith("EndSplineSet")) {
+                inSplineSet = false;
+                continue;
+            } else if (inSplineSet) {
+                splineSet.push(line);
+                continue;
+            } else {
+                break;
+            }
+        }
+    }
+    return [refers, splineSet];
 }
 
-function affinTransformViewBox(
-    viewBox: ViewBox,
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-): ViewBox {
-    const [minX, minY, width, height] = viewBox;
-    const maxX = width - minX;
-    const maxY = height - minY;
+// --------------------------------------------------------------------------
+// Viewbox のサイズ決定
 
-    const newMinX = a * minX + c * minY + e;
-    const newMaxX = a * maxX + c * maxY + e;
-    const newMinY = b * minX + d * minY + f;
-    const newMaxY = b * maxX + d * maxY + f;
+function estimateViewBox(fontWidth: number, lines: string[]): ViewBox {
+    let [minX, minY, maxX, maxY] = [0, 0, fontWidth, 0]; // Include matric origin and font width in the viewBox
+    for (const line of lines) {
+        if (line.trim() === "") { continue; }
+        const commands = line.trim().split(" ");
+        for (let i = 0; i < commands.length; i++) {
+            const command = commands[i];
+            if (command === "m" || command === "l") {
+                [minX, maxX] = expandRange(parseFloat(commands[0]), minX, maxX);
+                [minY, maxY] = expandRange(parseFloat(commands[1]), minY, maxY);
+                break;
+            } else if (command === "c") {
+                for (let j = 0; j < 3; j++) {
+                    [minX, maxX] = expandRange(parseFloat(commands[j * 2 + 0]), minX, maxX);
+                    [minY, maxY] = expandRange(parseFloat(commands[j * 2 + 1]), minY, maxY);
+                }
+                break;
+            }
+        }
+    }
+    return [minX, minY, maxX - minX, maxY - minY];
+}
 
-    const newWidth = newMaxX - newMinX;
-    const newHeight = newMaxY - newMinY;
-    return [minX, minY, newWidth, newHeight];
+function expandRange(newValue: number, min: number, max: number): Range {
+    min = Math.min(min, newValue);
+    max = Math.max(max, newValue);
+    return [min, max];
 }
 
 async function estimateReferViewBoxAsync(
@@ -165,7 +194,62 @@ async function estimateReferViewBoxAsync(
     return viewBox;
 }
 
-async function createReferGlyphSvgElementsAsync(
+function affinTransformViewBox(
+    viewBox: ViewBox,
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+): ViewBox {
+    const [minX, minY, width, height] = viewBox;
+    const maxX = width - minX;
+    const maxY = height - minY;
+
+    const newMinX = a * minX + c * minY + e;
+    const newMaxX = a * maxX + c * maxY + e;
+    const newMinY = b * minX + d * minY + f;
+    const newMaxY = b * maxX + d * maxY + f;
+
+    const newWidth = newMaxX - newMinX;
+    const newHeight = newMaxY - newMinY;
+    return [minX, minY, newWidth, newHeight];
+}
+
+function mergeViewBox(viewBox1: ViewBox, viewBox2: ViewBox): ViewBox {
+    const [minX1, minY1, width1, height1] = viewBox1;
+    const maxX1 = width1 - minX1;
+    const maxY1 = height1 - minY1;
+    const [minX2, minY2, width2, height2] = viewBox2;
+    const maxX2 = width2 - minX2;
+    const maxY2 = height2 - minY2;
+
+    const minX = Math.min(minX1, minX2);
+    const minY = Math.min(minY1, minY2);
+    const maxX = Math.max(maxX1, maxX2);
+    const maxY = Math.max(maxY1, maxY2);
+    const width = maxX - minX;
+    const height = maxY - minY;
+
+    return [minX, minY, width, height];
+}
+
+function addMargineToViewBox(viewBox: ViewBox, marginRate: number): ViewBox {
+    const [minX, minY, width, height] = viewBox;
+    const margin = Math.max(width, height) * marginRate;
+    return [
+        minX - margin,
+        minY - margin,
+        width + 2 * margin,
+        height + 2 * margin,
+    ];
+}
+
+// --------------------------------------------------------------------------
+// 文字データ解析
+
+async function parseReferGlyphToSvgElementsAsync(
     refers: string[],
     scale: number,
     getGlyphDataAsync: GlyphFetcher,
@@ -179,7 +263,7 @@ async function createReferGlyphSvgElementsAsync(
 
         const [refers, splineSet] = extractLayerData("Fore", glyphData);
         if (refers) {
-            const referElements = await createReferGlyphSvgElementsAsync(refers, scale, getGlyphDataAsync);
+            const referElements = await parseReferGlyphToSvgElementsAsync(refers, scale, getGlyphDataAsync);
             for (const e of referElements) {
                 elements.push(e);
             }
@@ -203,149 +287,6 @@ async function createReferGlyphSvgElementsAsync(
         }
     }
     return elements;
-}
-
-function extractLayerData(section: string, lines: string[]) {
-    let inSection = false;
-    let inSplineSet = false;
-    const refers = [];
-    const splineSet = [];
-    for (const line of lines) {
-        if (line.startsWith(section)) {
-            inSection = true;
-            continue;
-        }
-        if (inSection) {
-            if (line.startsWith("Refer:")) {
-                refers.push(line);
-                continue;
-            } else if (line.startsWith("SplineSet")) {
-                inSplineSet = true;
-                continue;
-            } else if (line.startsWith("EndSplineSet")) {
-                inSplineSet = false;
-                continue;
-            } else if (inSplineSet) {
-                splineSet.push(line);
-                continue;
-            } else {
-                break;
-            }
-        }
-    }
-    return [refers, splineSet];
-}
-
-function estimateViewBox(fontWidth: number, lines: string[]): ViewBox {
-    let [minX, minY, maxX, maxY] = [0, 0, fontWidth, 0]; // Include matric origin and font width in the viewBox
-    for (const line of lines) {
-        if (line.trim() === "") { continue; }
-        const commands = line.trim().split(" ");
-        for (let i = 0; i < commands.length; i++) {
-            const command = commands[i];
-            if (command === "m" || command === "l") {
-                [minX, maxX] = expandRange(parseFloat(commands[0]), minX, maxX);
-                [minY, maxY] = expandRange(parseFloat(commands[1]), minY, maxY);
-                break;
-            } else if (command === "c") {
-                for (let j = 0; j < 3; j++) {
-                    [minX, maxX] = expandRange(parseFloat(commands[j * 2 + 0]), minX, maxX);
-                    [minY, maxY] = expandRange(parseFloat(commands[j * 2 + 1]), minY, maxY);
-                }
-                break;
-            }
-        }
-    }
-    return [minX, minY, maxX - minX, maxY - minY];
-}
-
-function expandRange(newValue: number, min: number, max: number): Range {
-    min = Math.min(min, newValue);
-    max = Math.max(max, newValue);
-    return [min, max];
-}
-
-function createCoordinateSystemSvgElement(viewBox: ViewBox): SVGElement {
-    const [minX, minY, width, height] = viewBox;
-    const svg = createSvgElement("g", {
-        transform: `translate(0, ${minY}), scale(1, -1), translate(${-minX}, ${-height})`,
-    });
-    return svg;
-}
-
-function createAffineTransformSvgElement(
-    a: number,
-    b: number,
-    c: number,
-    d: number,
-    e: number,
-    f: number,
-): SVGElement {
-    const svg = createSvgElement("g", {
-        transform: `matrix(${a} ${b} ${c} ${d} ${e} ${f})`,
-    });
-    return svg;
-}
-
-function addMargineToViewBox(viewBox: ViewBox, marginRate: number): ViewBox {
-    const [minX, minY, width, height] = viewBox;
-    const margin = Math.max(width, height) * marginRate;
-    return [
-        minX - margin,
-        minY - margin,
-        width + 2 * margin,
-        height + 2 * margin,
-    ];
-}
-
-function extractFontWidth(lines: string[]): number {
-    for (const line of lines) {
-        if (line.startsWith("Width:")) {
-            const width = parseFloat(line.split(":")[1].trim());
-            return width;
-        }
-    }
-    return 0; // Default value if not found
-}
-
-function createAxisSvgElements(
-    viewBox: ViewBox,
-    fontWidth: number,
-    scale: number,
-) {
-    const [minX, minY, width, height] = viewBox;
-
-    const axisX = createSvgElement("line", {
-        "class": "axis",
-        x1: minX,
-        y1: 0,
-        x2: minX + width,
-        y2: 0,
-        stroke: "currentColor",
-        "stroke-width": scale,
-    });
-
-    const axisY = createSvgElement("line", {
-        "class": "axis",
-        x1: 0,
-        y1: minY,
-        x2: 0,
-        y2: minY + height,
-        stroke: "currentColor",
-        "stroke-width": scale,
-    });
-
-    const widthLine = createSvgElement("line", {
-        "class": "font-width-line",
-        x1: fontWidth,
-        y1: minY,
-        x2: fontWidth,
-        y2: minY + height,
-        stroke: "currentColor",
-        "stroke-width": scale,
-    });
-
-    return [axisX, axisY, widthLine];
 }
 
 function parsePathToSvgElements(
@@ -378,22 +319,6 @@ function parsePathToSvgElements(
     }
     svgElements.push(createPathSvgElement(pathDataList, scale, className));
     return svgElements;
-}
-
-function createPathSvgElement(
-    pathDataList: string[],
-    scale: number,
-    className: string,
-): SVGElement {
-    const data = pathDataList.join(" ");
-    const svg = createSvgElement("path", {
-        "class": className,
-        d: data,
-        fill: "currentColor",
-        stroke: "currentColor",
-        "stroke-width": scale,
-    });
-    return svg;
 }
 
 function parsePointToSvgElements(lines: string[], scale: number): SVGElement[] {
@@ -448,6 +373,141 @@ function parsePointType(arg: string): PointTypes {
     }
 }
 
+function parseHandleToSvgElements(
+    lines: string[],
+    scale: number,
+): SVGElement[] {
+    const svgElements: SVGElement[] = [];
+    const handleDataList: HandleData[] = [];
+    let last = { x: 0, y: 0 };
+    for (const line of lines) {
+        if (line.trim() === "") { continue; }
+        const args = line.trim().split(" ");
+        for (let i = 0; i < args.length; i++) {
+            const command = args[i];
+            if (command === "m" || command === "l") {
+                last = { x: parseFloat(args[0]), y: parseFloat(args[1]) };
+                break;
+            } else if (command === "c") {
+                handleDataList.push({
+                    x1: last.x,
+                    y1: last.y,
+                    x2: parseFloat(args[0]),
+                    y2: parseFloat(args[1]),
+                    forward: true,
+                });
+                handleDataList.push({
+                    x1: parseFloat(args[4]),
+                    y1: parseFloat(args[5]),
+                    x2: parseFloat(args[2]),
+                    y2: parseFloat(args[3]),
+                    forward: false,
+                });
+                last = { x: parseFloat(args[4]), y: parseFloat(args[5]) };
+                break;
+            }
+        }
+    }
+    for (const handleData of handleDataList) {
+        for (const element of createHandleSvgElements(handleData, scale)) {
+            svgElements.push(element);
+        }
+    }
+    return svgElements;
+}
+
+// --------------------------------------------------------------------------
+// SVG エレメント作成
+
+function createSvgElement(
+    tag: string,
+    attributes: { [key: string]: any } = {},
+) {
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", tag);
+    for (const [key, value] of Object.entries(attributes)) {
+        svg.setAttribute(key, value);
+    }
+    return svg;
+}
+
+function createCoordinateSystemSvgElement(viewBox: ViewBox): SVGElement {
+    const [minX, minY, width, height] = viewBox;
+    const svg = createSvgElement("g", {
+        transform: `translate(0, ${minY}), scale(1, -1), translate(${-minX}, ${-height})`,
+    });
+    return svg;
+}
+
+function createAffineTransformSvgElement(
+    a: number,
+    b: number,
+    c: number,
+    d: number,
+    e: number,
+    f: number,
+): SVGElement {
+    const svg = createSvgElement("g", {
+        transform: `matrix(${a} ${b} ${c} ${d} ${e} ${f})`,
+    });
+    return svg;
+}
+
+function createAxisSvgElements(
+    viewBox: ViewBox,
+    fontWidth: number,
+    scale: number,
+) {
+    const [minX, minY, width, height] = viewBox;
+
+    const axisX = createSvgElement("line", {
+        "class": "axis",
+        x1: minX,
+        y1: 0,
+        x2: minX + width,
+        y2: 0,
+        stroke: "currentColor",
+        "stroke-width": scale,
+    });
+
+    const axisY = createSvgElement("line", {
+        "class": "axis",
+        x1: 0,
+        y1: minY,
+        x2: 0,
+        y2: minY + height,
+        stroke: "currentColor",
+        "stroke-width": scale,
+    });
+
+    const widthLine = createSvgElement("line", {
+        "class": "font-width-line",
+        x1: fontWidth,
+        y1: minY,
+        x2: fontWidth,
+        y2: minY + height,
+        stroke: "currentColor",
+        "stroke-width": scale,
+    });
+
+    return [axisX, axisY, widthLine];
+}
+
+function createPathSvgElement(
+    pathDataList: string[],
+    scale: number,
+    className: string,
+): SVGElement {
+    const data = pathDataList.join(" ");
+    const svg = createSvgElement("path", {
+        "class": className,
+        d: data,
+        fill: "currentColor",
+        stroke: "currentColor",
+        "stroke-width": scale,
+    });
+    return svg;
+}
+
 function createPontSvgElement(
     x: number,
     y: number,
@@ -497,49 +557,6 @@ function createPontSvgElement(
         }
     }
     return svg;
-}
-
-function parseHandleToSvgElements(
-    lines: string[],
-    scale: number,
-): SVGElement[] {
-    const svgElements: SVGElement[] = [];
-    const handleDataList: HandleData[] = [];
-    let last = { x: 0, y: 0 };
-    for (const line of lines) {
-        if (line.trim() === "") { continue; }
-        const args = line.trim().split(" ");
-        for (let i = 0; i < args.length; i++) {
-            const command = args[i];
-            if (command === "m" || command === "l") {
-                last = { x: parseFloat(args[0]), y: parseFloat(args[1]) };
-                break;
-            } else if (command === "c") {
-                handleDataList.push({
-                    x1: last.x,
-                    y1: last.y,
-                    x2: parseFloat(args[0]),
-                    y2: parseFloat(args[1]),
-                    forward: true,
-                });
-                handleDataList.push({
-                    x1: parseFloat(args[4]),
-                    y1: parseFloat(args[5]),
-                    x2: parseFloat(args[2]),
-                    y2: parseFloat(args[3]),
-                    forward: false,
-                });
-                last = { x: parseFloat(args[4]), y: parseFloat(args[5]) };
-                break;
-            }
-        }
-    }
-    for (const handleData of handleDataList) {
-        for (const element of createHandleSvgElements(handleData, scale)) {
-            svgElements.push(element);
-        }
-    }
-    return svgElements;
 }
 
 function createHandleSvgElements(

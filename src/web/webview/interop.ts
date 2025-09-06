@@ -11,6 +11,13 @@ export function postMessage(
     });
 }
 
+type ReturnMessage = {
+    type: string;
+    callbackId: string;
+    result?: any;
+    error?: any;
+}
+
 export function sendMessageAsync(
     receiver: VSCodeApi,
     message: string,
@@ -18,7 +25,7 @@ export function sendMessageAsync(
 ): Promise<any> {
     return new Promise((resolve, reject) => {
         const callbackId = Math.random().toString(36).substring(2, 15);
-        function handleMessage(event: MessageEvent<any>) {
+        function handleMessage(event: MessageEvent<ReturnMessage>) {
             if (
                 event.data.type === "[return]" &&
                 event.data.callbackId === callbackId
@@ -27,7 +34,7 @@ export function sendMessageAsync(
                 if (event.data.result) {
                     resolve(event.data.result);
                 } else {
-                    reject(event.data.error);
+                    reject(new Error(event.data.error));
                 }
             }
         }

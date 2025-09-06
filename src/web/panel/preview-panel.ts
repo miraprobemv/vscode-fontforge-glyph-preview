@@ -69,8 +69,7 @@ export class PreviewPanel {
                     await returnMessageAsync(
                         this.panel,
                         message,
-                        async (params) =>
-                            await this.fetchGlyphDataFromOtherFile(params.gid),
+                        async (params) => await this.fetchGlyphDataFromOtherFile(params.gid),
                     );
                     break;
                 case "writeDebugLog":
