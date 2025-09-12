@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
-import { writeDebugLog } from "./panel/util";
+import { initializeDebugLog, writeDebugLog } from "./panel/util";
 import { PreviewPanel } from "./panel/preview-panel";
 
 export function activate(context: vscode.ExtensionContext) {
+    initializeDebugLog(context.extensionMode);
     writeDebugLog(`Extention is activated`);
 
     const previewPanel = new PreviewPanel(context);
