@@ -32,12 +32,16 @@
       "extensions": [
         ".sfd",
         ".glyph"
+      ],
+      "filenames": [
+        "font.props"
       ]
     }],
     "commands": [
       {
         "command": "fontforge-glyph-preview.showPreview",
-        "title": "FontForge Glyph Preview: Preview SFD Glyph",
+        "category": "FontForge Glyph Preview",
+        "title": "Preview SFD Glyph",
         "icon": "$(open-preview)"
       }
     ],
@@ -46,6 +50,13 @@
         {
           "command": "fontforge-glyph-preview.showPreview",
           "when": "editorLangId == sfd",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "fontforge-glyph-preview.showPreview",
+          "when": "resourceLangId == sfd",
           "group": "navigation"
         }
       ]
