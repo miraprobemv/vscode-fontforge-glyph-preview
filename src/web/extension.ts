@@ -11,7 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
         "fontforge-glyph-preview.showPreview",
         () => {
             writeDebugLog(`fontforge-glyph-preview.showPreview command is called`,);
-            previewPanel.initialize();
+            previewPanel.activate();
         },
     );
     context.subscriptions.push(disposable);

@@ -81,9 +81,11 @@ const webExtensionConfig = {
 const webviewConfig = {
 	...baseConfig,
 	target: ["web", "es2020"],
-	entry: "./src/web/webview/main.ts",
+	entry: {
+		"preview": "./src/web/webview/preview.ts",
+	},
 	output: {
-		filename: "webview.js",
+		filename: "[name].js",
 		path: path.join(__dirname, "./dist/web"),
 		libraryTarget: "module",
 		chunkFormat: "module",

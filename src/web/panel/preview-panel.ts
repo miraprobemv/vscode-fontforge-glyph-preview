@@ -17,7 +17,7 @@ export class PreviewPanel {
         this.context = context;
     }
 
-    initialize() {
+    activate() {
         // プレビューのパネルがアクティブなときにコマンド実行された場合は何もしない。
         if (this.panel && this.panel.active) { return; }
 
@@ -107,7 +107,7 @@ export class PreviewPanel {
             vscode.Uri.joinPath(this.context.extensionUri, "media", "style.css")
         );
         const jsUri = panel.webview.asWebviewUri(
-            vscode.Uri.joinPath(this.context.extensionUri, "dist", "web", "webview.js")
+            vscode.Uri.joinPath(this.context.extensionUri, "dist", "web", "preview.js")
         );
 
         return `
