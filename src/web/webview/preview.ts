@@ -6,6 +6,7 @@ import {
     updateGlyphList,
 } from "./ui";
 import { GlyphStore } from "./glyphstore";
+import { extractGid, extractGlyphName } from "./sfd"; 
 import { showGlyphSvgAsync } from "./sfd-to-svg";
 import { postMessage, sendMessageAsync } from "./interop";
 
@@ -84,6 +85,29 @@ window.addEventListener("message", async (event) => {
             const [name, gid] = glyphNameToGidList[0];
             await showGlyphDataAsync(name, gid);
         }
+    } else if (event.data.type === "overrideGlyphData") {
+        const params = event.data.params;
+        writeDebugLog("Received Glyph Data at " + params.timing + ".");
+        const gid = extractGid(params.glyphData);
+        const name = extractGlyphName(params.glyphData);
+        glyphStore.addGlyph(gid, name, params.glyphData);
+        
+        const glyphNameToGidList = glyphStore.getAllGlyphNameToGidList();
+        updateGlyphList(
+            sideMenu,
+            openSideMenuButton,
+            glyphListContainer,
+            glyphNameToGidList,
+            async (name, gid) => {
+                await showGlyphDataAsync(name, gid);
+                postMessage(vscode, "storeCurrentGlyphName", { name });
+            },
+        );
+        if (glyphName.textContent === name) {
+            writeDebugLog("Updete overrided glyph: " + name);
+            await showGlyphSvgAsync(glyphContainer, gid, (gid: number) => getGlyphDataAsync(gid));
+        }
+
     }
 });
 

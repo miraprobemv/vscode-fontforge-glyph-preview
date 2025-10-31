@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { generateNonce, getTabName, getParentUri, writeDebugLog } from "./util";
-import { getGlyphFileDataAsync } from "./sfd";
+import { generateNonce, getTabName, getFileBaseName, getParentUri, isUnderDirectory, writeDebugLog, sleep } from "./util";
+import { getGlyphFileDataAsync, iterateGlyphFileDataAsync } from "./sfd";
 import { postMessage, returnMessageAsync } from "./interop";
 
 export class PreviewPanel {
@@ -12,12 +12,17 @@ export class PreviewPanel {
     private currentUri: vscode.Uri | undefined;
     private currentVersion: number | undefined;
     private currentGlyph: string | undefined;
+    private isSfdir: boolean = false;
+    private dirGlyphVersions: Map<vscode.Uri, number> = new Map<vscode.Uri, number>();
+
+    // ファイルシステムの変更検知用ウォッチャー
+    private fileWatcher: vscode.FileSystemWatcher | undefined;
 
     constructor(context: vscode.ExtensionContext) {
         this.context = context;
     }
 
-    activate() {
+    async activate() {
         // プレビューのパネルがアクティブなときにコマンド実行された場合は何もしない。
         if (this.panel && this.panel.active) { return; }
 
@@ -35,7 +40,7 @@ export class PreviewPanel {
         this.currentEditor = editorWhenCommandCalled;
 
         // すでにパネルが存在する場合はそれを表示する。（2つ以上プレビューを表示しない）
-        if (this.tryReusePanel()) { return; }
+        if (await this.tryReusePanelAsync()) { return; }
 
         // パネルがない場合は追加してセットアップをする。
         this.panel = this.initializeWebviewPanel();
@@ -58,7 +63,7 @@ export class PreviewPanel {
                     // Webview の初期化が完了したタイミングで初期表示を行う。
                     // WebView は背面に行ったときにタブの内容が破棄される。
                     // アクティブになった時に再びタブの内容が作られて ready メッセージが投げられるため注意する。
-                    this.showWebviewFirstView();
+                    await this.showWebviewFirstViewAsync();
                     break;
                 case "storeCurrentGlyphName":
                     // 表示中グリフ情報を保存する。
@@ -95,6 +100,10 @@ export class PreviewPanel {
 
         panel.onDidDispose(() => {
             this.panel = undefined;
+            if (this.fileWatcher) {
+                this.fileWatcher.dispose();
+                this.fileWatcher = undefined;
+            }
         });
 
         return panel;
@@ -140,7 +149,7 @@ export class PreviewPanel {
         `;
     }
 
-    private showWebviewFirstView() {
+    private async showWebviewFirstViewAsync() {
         writeDebugLog(`Extension get ready message.`);
         if (!this.currentEditor) {
             writeDebugLog(`activeEditor is not found`);
@@ -148,10 +157,10 @@ export class PreviewPanel {
         }
         // 初期表示をする。
         writeDebugLog(`Current editor is "${getTabName(this.currentEditor)}".`,);
-        this.updatePreview(this.currentEditor, "onReady");
+        await this.updatePreviewAsync(this.currentEditor, "onReady");
     }
 
-    private tryReusePanel(): boolean {
+    private async tryReusePanelAsync(): Promise<boolean> {
         if (!this.panel) { return false; }
 
         this.panel.reveal(vscode.ViewColumn.Beside);
@@ -161,7 +170,7 @@ export class PreviewPanel {
         // プレビュー中のドキュメントでアクティベートされた場合は更新しない。
         // (バージョンの更新は onDidChangeTextDocument で対応しているので考慮しなくてよいはず。)
         if (activeEditor.document.uri === this.currentUri) { return true; }
-        this.updatePreview(activeEditor, "onReveal");
+        await this.updatePreviewAsync(activeEditor, "onReveal");
         return true;
     }
 
@@ -188,20 +197,83 @@ export class PreviewPanel {
         }
     }
 
-    private updatePreview(editor: vscode.TextEditor, timing: string) {
+    private async updatePreviewAsync(editor: vscode.TextEditor, timing: string) {
         if (!this.panel) { return; }
         if (editor.document.languageId !== "sfd") { return; }
 
         this.currentEditor = editor;
         this.currentUri = editor.document.uri;
         this.currentVersion = editor.document.version;
+        this.isSfdir = (getFileBaseName(editor.document.fileName) === "font.props");
+        this.dirGlyphVersions.clear();
 
-        const fileName = getTabName(editor);
-        const splineFontData = editor.document.getText().split("\n");
+        let fileName: string;
+        let splineFontData: string[];
+        if (this.isSfdir) {
+            // SFD ディレクトリの場合は font.props と同じディレクトリの glyph ファイルを登録する。
+            writeDebugLog(`Setup font.props: ${this.currentUri}`);
+            const sfdir = getParentUri(this.currentUri);
+            fileName = getFileBaseName(sfdir.path);
+            splineFontData = [];
+            for await (const {uri, version, glyphData} of iterateGlyphFileDataAsync(sfdir)) {
+                this.dirGlyphVersions.set(uri, version);
+                splineFontData.push(...glyphData);
+            }
+
+            // ファイルシステムの外部変更を監視。ここでは SFD ディレクトリ配下の .glyph ファイルのみを監視して対応する。
+            if (this.fileWatcher) {
+                this.fileWatcher.dispose();
+            }
+            this.fileWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(sfdir, "**/{font.props,*.glyph}") );
+            this.fileWatcher.onDidChange(async (uri) => {
+                if (!this.panel) { return; }
+                if (!this.isSfdir) { return; }
+                writeDebugLog(`Filesystem change detected: ${uri.fsPath}`);
+
+                // 変更されたファイルが SFD ディレクトリ内にある場合、グリフ情報を更新してグリフを更新する。
+                if (!isUnderDirectory(uri, sfdir)) { return; }
+                await sleep(30); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
+                if (getFileBaseName(uri.path) === "font.props") {
+                    this.currentVersion = (await vscode.workspace.openTextDocument(uri)).version;
+                } else {
+                    const document = await vscode.workspace.openTextDocument(uri);
+                    this.overrideGlyphData(document, "onFileSystemChange(.glyph)");
+                }
+            });
+
+        } else {
+            // 単独ファイルの場合はエディタからデータを抽出して更新
+            writeDebugLog(`Setup .sfd or .glyph: ${this.currentUri}`);
+            const parentDir = getParentUri(this.currentUri);
+            fileName = getTabName(editor);
+            splineFontData = editor.document.getText().split("\n");
+
+            // ファイルシステムの外部変更を監視。該当ファイルをピンポイントに監視して対応する。
+            if (this.fileWatcher) {
+                this.fileWatcher.dispose();
+            }
+            this.fileWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(parentDir, fileName) );
+            this.fileWatcher.onDidChange(async (uri) => {
+                if (!this.panel) { return; }
+                writeDebugLog(`Filesystem change detected: ${uri.fsPath}`);
+                await sleep(30); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
+                const document = await vscode.workspace.openTextDocument(uri);
+                this.overrideGlyphData(document, "onFileSystemChange(.sfd or .glyph)");
+            });
+        }
         postMessage(this.panel, "updateFontData", {
             fileName: fileName,
             fontData: splineFontData,
             startupGlyph: this.currentGlyph,
+            timing: timing,
+        });
+    }
+
+    private overrideGlyphData(document: vscode.TextDocument, timing: string) {
+        if (!this.panel) { return; }
+        const glyphData = document.getText().split('\n');
+        postMessage(this.panel, "overrideGlyphData", {
+            glyphData: glyphData,
             timing: timing,
         });
     }
@@ -212,8 +284,19 @@ export class PreviewPanel {
         if (!this.panel) { return; }
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor) { return; }
-        if (event.document.uri !== activeEditor.document.uri) { return; }
-        this.updatePreview(activeEditor, "onDidChangeTextDocument");
+
+        if (this.isSfdir) {
+            // SFD ディレクトリを開いている場合
+            // - font.props が更新された場合は何もしない # TODO: フォントの全体情報を利用する場合は情報を更新する。
+            if (event.document.uri === activeEditor.document.uri) { return; }
+            // - font.props の管理対象の glyph ファイルが更新された場合は該当のグリフ情報を置き換えて表示を更新する。
+            if (!isUnderDirectory(event.document.uri, getParentUri(activeEditor.document.uri))) { return; }
+            this.overrideGlyphData(event.document, "onDidChangeTextDocument(.glyph)");
+        } else {
+            // 単独ファイルを開いている場合は表示中のファイルが更新された場合のみ情報を更新する
+            if (event.document.uri !== activeEditor.document.uri) { return; }
+            await this.updatePreviewAsync(activeEditor, "onDidChangeTextDocument(.sfd or .glyph)");
+        }
     }
 
     private async onDidChangeActiveTextEditor(
@@ -228,6 +311,6 @@ export class PreviewPanel {
             return;
         }
         this.currentGlyph = undefined;
-        this.updatePreview(editor, "onDidChangeActiveTextEditor");
+        await this.updatePreviewAsync(editor, "onDidChangeActiveTextEditor");
     }
 }
