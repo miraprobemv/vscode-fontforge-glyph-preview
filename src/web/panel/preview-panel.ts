@@ -1,14 +1,17 @@
 import * as vscode from "vscode";
-import { generateNonce, getTabName, getFileBaseName, getParentUri, isUnderDirectory, writeDebugLog, sleep } from "./util";
+import { generateNonce, getDocumentName, getFileBaseName, getParentUri, isUnderDirectory, writeDebugLog, sleep } from "./util";
 import { getGlyphFileDataAsync, iterateGlyphFileDataAsync } from "./sfd";
 import { postMessage, returnMessageAsync } from "./interop";
 
 export class PreviewPanel {
     private context: vscode.ExtensionContext;
 
-    // パネルを全体で1つしか表示しないため、情報を保持しておく。
     private panel: vscode.WebviewPanel | undefined;
-    private currentEditor: vscode.TextEditor | undefined;
+
+    private panelMode: string;
+
+    private currentDocument: vscode.TextDocument | undefined;
+    // 表示しているドキュメントの関連情報
     private currentUri: vscode.Uri | undefined;
     private currentVersion: number | undefined;
     private currentGlyph: string | undefined;
@@ -18,39 +21,54 @@ export class PreviewPanel {
     // ファイルシステムの変更検知用ウォッチャー
     private fileWatcher: vscode.FileSystemWatcher | undefined;
 
-    constructor(context: vscode.ExtensionContext) {
+    // 登録したイベント
+    private eventSubscriptions: vscode.Disposable[] = [];
+
+    constructor(context: vscode.ExtensionContext, mode: string) {
         this.context = context;
+        this.panelMode = mode;
+        writeDebugLog(`Preview panel is intialized as ${this.panelMode} mode.`);
     }
 
-    async activate() {
-        // プレビューのパネルがアクティブなときにコマンド実行された場合は何もしない。
-        if (this.panel && this.panel.active) { return; }
-
-        const editorWhenCommandCalled = vscode.window.activeTextEditor;
-        // アクティブなテキストエディタがなかったりそれ以外のパネルを開いている場合はエラーメッセージを表示する。（多分コマンド実行のみ）
-        if (!editorWhenCommandCalled) {
-            vscode.window.showErrorMessage("No active text editor found.");
-            return;
-        }
-        // アクティブなテキストエディタがサポート対象外のファイル形式の場合もエラーメッセージを表示する。（多分コマンド実行のみ）
-        if (editorWhenCommandCalled.document.languageId !== "sfd") {
-            vscode.window.showErrorMessage(`This file type is not supported: "${getTabName(editorWhenCommandCalled)}".`,);
-            return;
-        }
-        this.currentEditor = editorWhenCommandCalled;
-
-        // すでにパネルが存在する場合はそれを表示する。（2つ以上プレビューを表示しない）
-        if (await this.tryReusePanelAsync()) { return; }
-
-        // パネルがない場合は追加してセットアップをする。
-        this.panel = this.initializeWebviewPanel();
+    public get isActive(): boolean {
+        return (this.panel && this.panel.active) ?? false;
     }
 
-    private initializeWebviewPanel(): vscode.WebviewPanel {
+    public get uri(): vscode.Uri | undefined {
+        return this.currentUri;
+    }
+
+    public initialize(document: vscode.TextDocument, column: vscode.ViewColumn) {
+
+        this.currentDocument = document;
+        // パネルを追加してセットアップをする。
+        this.panel = this.initializeWebviewPanel(column);
+    }
+
+    public close(): void {
+        if (this.panel) {
+            this.panel.dispose();
+            this.panel = undefined;
+        }
+        this.closeResources();
+    }
+
+    private closeResources(): void {
+        if (this.fileWatcher) {
+            this.fileWatcher.dispose();
+            this.fileWatcher = undefined;
+        }
+        for (const subscription of this.eventSubscriptions) {
+            subscription.dispose();
+        }
+        this.eventSubscriptions.splice(0);
+    }
+
+    private initializeWebviewPanel(column: vscode.ViewColumn): vscode.WebviewPanel {
         const panel = vscode.window.createWebviewPanel(
             "fontforgeGlyphPreview",
             "FontForge Glyph Preview",
-            vscode.ViewColumn.Beside,
+            { viewColumn: column, preserveFocus: false },
             { enableScripts: true },
         );
 
@@ -85,25 +103,24 @@ export class PreviewPanel {
         });
 
         // 現在プレビューしているドキュメントが更新された場合はプレビュー内容を更新する。
-        vscode.workspace.onDidChangeTextDocument((event) =>
+        this.eventSubscriptions.push(vscode.workspace.onDidChangeTextDocument((event) =>
             this.onDidChangeTextDocument(event)
-        );
+        ));
 
-        // 別のドキュメントに切り替わった時にプレビューを更新する。
+        // 別のドキュメントに切り替わった時にプレビューを更新する。（single mode の場合のみ）
         // プレビュー対象外のドキュメントから現在プレビュー中のドキュメントに戻ってきた場合、更新がなければプレビューを更新しない。
-        vscode.window.onDidChangeActiveTextEditor((editor) =>
-            this.onDidChangeActiveTextEditor(editor)
-        );
+        if (this.panelMode === "single") {
+            this.eventSubscriptions.push(vscode.window.onDidChangeActiveTextEditor((editor) =>
+                this.onDidChangeActiveTextEditor(editor)
+            ));
+        }
 
         // WebView のコンテンツを設定する。
         panel.webview.html = this.initializeHtmlContent(panel);
 
         panel.onDidDispose(() => {
             this.panel = undefined;
-            if (this.fileWatcher) {
-                this.fileWatcher.dispose();
-                this.fileWatcher = undefined;
-            }
+            this.closeResources();
         });
 
         return panel;
@@ -151,26 +168,35 @@ export class PreviewPanel {
 
     private async showWebviewFirstViewAsync() {
         writeDebugLog(`Extension get ready message.`);
-        if (!this.currentEditor) {
-            writeDebugLog(`activeEditor is not found`);
+        if (!this.currentDocument) {
+            writeDebugLog(`document is not found`);
             return;
         }
         // 初期表示をする。
-        writeDebugLog(`Current editor is "${getTabName(this.currentEditor)}".`,);
-        await this.updatePreviewAsync(this.currentEditor, "onReady");
+        writeDebugLog(`Current editor is "${getDocumentName(this.currentDocument)}".`,);
+        await this.updatePreviewAsync(this.currentDocument, "onReady");
     }
 
-    private async tryReusePanelAsync(): Promise<boolean> {
+    public shows(document: vscode.TextDocument): boolean {
+        return document.uri === this.currentUri;
+    }
+
+    public reveal(column: vscode.ViewColumn | undefined) {
+        if (!this.panel) { return; }
+        this.panel.reveal(column, false);
+    }
+
+    public async tryReusePanelAsync(document: vscode.TextDocument, column: vscode.ViewColumn | undefined): Promise<boolean> {
         if (!this.panel) { return false; }
 
-        this.panel.reveal(vscode.ViewColumn.Beside);
+        this.reveal(column);
 
-        const activeEditor = vscode.window.activeTextEditor;
-        if (!activeEditor) { return true; }
         // プレビュー中のドキュメントでアクティベートされた場合は更新しない。
         // (バージョンの更新は onDidChangeTextDocument で対応しているので考慮しなくてよいはず。)
-        if (activeEditor.document.uri === this.currentUri) { return true; }
-        await this.updatePreviewAsync(activeEditor, "onReveal");
+        if (document.uri === this.currentUri) {
+            return true;
+        }
+        await this.updatePreviewAsync(document, "onReveal");
         return true;
     }
 
@@ -197,14 +223,15 @@ export class PreviewPanel {
         }
     }
 
-    private async updatePreviewAsync(editor: vscode.TextEditor, timing: string) {
+    private async updatePreviewAsync(document: vscode.TextDocument, timing: string) {
         if (!this.panel) { return; }
-        if (editor.document.languageId !== "sfd") { return; }
+        if (document.languageId !== "sfd") { return; }
 
-        this.currentEditor = editor;
-        this.currentUri = editor.document.uri;
-        this.currentVersion = editor.document.version;
-        this.isSfdir = (getFileBaseName(editor.document.fileName) === "font.props");
+        // this.currentEditor = editor;
+        this.currentDocument = document;
+        this.currentUri = document.uri;
+        this.currentVersion = document.version;
+        this.isSfdir = (getFileBaseName(document.fileName) === "font.props");
         this.dirGlyphVersions.clear();
 
         let fileName: string;
@@ -245,8 +272,8 @@ export class PreviewPanel {
             // 単独ファイルの場合はエディタからデータを抽出して更新
             writeDebugLog(`Setup .sfd or .glyph: ${this.currentUri}`);
             const parentDir = getParentUri(this.currentUri);
-            fileName = getTabName(editor);
-            splineFontData = editor.document.getText().split("\n");
+            fileName = getDocumentName(document);
+            splineFontData = document.getText().split("\n");
 
             // ファイルシステムの外部変更を監視。該当ファイルをピンポイントに監視して対応する。
             if (this.fileWatcher) {
@@ -285,17 +312,17 @@ export class PreviewPanel {
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor) { return; }
 
-        if (this.isSfdir) {
+        if (this.isSfdir && this.currentUri) {
             // SFD ディレクトリを開いている場合
             // - font.props が更新された場合は何もしない # TODO: フォントの全体情報を利用する場合は情報を更新する。
             if (event.document.uri === activeEditor.document.uri) { return; }
             // - font.props の管理対象の glyph ファイルが更新された場合は該当のグリフ情報を置き換えて表示を更新する。
-            if (!isUnderDirectory(event.document.uri, getParentUri(activeEditor.document.uri))) { return; }
+            if (!isUnderDirectory(event.document.uri, getParentUri(this.currentUri))) { return; }
             this.overrideGlyphData(event.document, "onDidChangeTextDocument(.glyph)");
         } else {
             // 単独ファイルを開いている場合は表示中のファイルが更新された場合のみ情報を更新する
             if (event.document.uri !== activeEditor.document.uri) { return; }
-            await this.updatePreviewAsync(activeEditor, "onDidChangeTextDocument(.sfd or .glyph)");
+            await this.updatePreviewAsync(event.document, "onDidChangeTextDocument(.sfd or .glyph)");
         }
     }
 
@@ -311,6 +338,6 @@ export class PreviewPanel {
             return;
         }
         this.currentGlyph = undefined;
-        await this.updatePreviewAsync(editor, "onDidChangeActiveTextEditor");
+        await this.updatePreviewAsync(editor.document, "onDidChangeActiveTextEditor");
     }
 }

@@ -10,8 +10,8 @@ export function generateNonce(): string {
     return nonce;
 }
 
-export function getTabName(editor: vscode.TextEditor): string {
-    return getFileBaseName(editor.document.fileName);
+export function getDocumentName(document: vscode.TextDocument): string {
+    return getFileBaseName(document.fileName);
 }
 
 export function getFileBaseName(fileName: string): string {
