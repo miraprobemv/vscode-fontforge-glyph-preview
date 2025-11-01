@@ -10,13 +10,11 @@ export class PreviewPanel {
 
     private panelMode: string;
 
-    private currentDocument: vscode.TextDocument | undefined;
+    private document: vscode.TextDocument | undefined;
     // 表示しているドキュメントの関連情報
-    private currentUri: vscode.Uri | undefined;
-    private currentVersion: number | undefined;
-    private currentGlyph: string | undefined;
     private isSfdir: boolean = false;
     private dirGlyphVersions: Map<vscode.Uri, number> = new Map<vscode.Uri, number>();
+    private currentGlyph: string | undefined;
 
     // ファイルシステムの変更検知用ウォッチャー
     private fileWatcher: vscode.FileSystemWatcher | undefined;
@@ -35,12 +33,12 @@ export class PreviewPanel {
     }
 
     public get uri(): vscode.Uri | undefined {
-        return this.currentUri;
+        return this.document?.uri;
     }
 
     public initialize(document: vscode.TextDocument, column: vscode.ViewColumn) {
 
-        this.currentDocument = document;
+        this.document = document;
         // パネルを追加してセットアップをする。
         this.panel = this.initializeWebviewPanel(column);
     }
@@ -168,17 +166,17 @@ export class PreviewPanel {
 
     private async showWebviewFirstViewAsync() {
         writeDebugLog(`Extension get ready message.`);
-        if (!this.currentDocument) {
+        if (!this.document) {
             writeDebugLog(`document is not found`);
             return;
         }
         // 初期表示をする。
-        writeDebugLog(`Current editor is "${getDocumentName(this.currentDocument)}".`,);
-        await this.updatePreviewAsync(this.currentDocument, "onReady");
+        writeDebugLog(`Current editor is "${getDocumentName(this.document)}".`,);
+        await this.updatePreviewAsync(this.document, "onReady");
     }
 
     public shows(document: vscode.TextDocument): boolean {
-        return document.uri === this.currentUri;
+        return document.uri === this.document?.uri;
     }
 
     public reveal(column: vscode.ViewColumn | undefined) {
@@ -193,7 +191,7 @@ export class PreviewPanel {
 
         // プレビュー中のドキュメントでアクティベートされた場合は更新しない。
         // (バージョンの更新は onDidChangeTextDocument で対応しているので考慮しなくてよいはず。)
-        if (document.uri === this.currentUri) {
+        if (document.uri === this.document?.uri) {
             return true;
         }
         await this.updatePreviewAsync(document, "onReveal");
@@ -209,11 +207,11 @@ export class PreviewPanel {
             `fetchGlyphDataFromOtherFile is called for glyph (gid: ${gid}).`,
         );
         if (!this.panel) { throw new Error(`The panel is not open.`); }
-        if (!this.currentUri) {
+        if (!this.document) {
             writeDebugLog(`Not base file open`);
             throw new Error(`The glyph file is not open.`);
         }
-        const glyphData = await getGlyphFileDataAsync(gid, getParentUri(this.currentUri));
+        const glyphData = await getGlyphFileDataAsync(gid, getParentUri(this.document.uri));
         if (glyphData) {
             writeDebugLog(`Found: ${gid}`);
             return glyphData;
@@ -227,10 +225,7 @@ export class PreviewPanel {
         if (!this.panel) { return; }
         if (document.languageId !== "sfd") { return; }
 
-        // this.currentEditor = editor;
-        this.currentDocument = document;
-        this.currentUri = document.uri;
-        this.currentVersion = document.version;
+        this.document = document;
         this.isSfdir = (getFileBaseName(document.fileName) === "font.props");
         this.dirGlyphVersions.clear();
 
@@ -238,8 +233,8 @@ export class PreviewPanel {
         let splineFontData: string[];
         if (this.isSfdir) {
             // SFD ディレクトリの場合は font.props と同じディレクトリの glyph ファイルを登録する。
-            writeDebugLog(`Setup font.props: ${this.currentUri}`);
-            const sfdir = getParentUri(this.currentUri);
+            writeDebugLog(`Setup font.props: ${this.document.uri}`);
+            const sfdir = getParentUri(this.document.uri);
             fileName = getFileBaseName(sfdir.path);
             splineFontData = [];
             for await (const {uri, version, glyphData} of iterateGlyphFileDataAsync(sfdir)) {
@@ -261,7 +256,7 @@ export class PreviewPanel {
                 if (!isUnderDirectory(uri, sfdir)) { return; }
                 await sleep(30); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
                 if (getFileBaseName(uri.path) === "font.props") {
-                    this.currentVersion = (await vscode.workspace.openTextDocument(uri)).version;
+                    this.document = await vscode.workspace.openTextDocument(uri);
                 } else {
                     const document = await vscode.workspace.openTextDocument(uri);
                     this.overrideGlyphData(document, "onFileSystemChange(.glyph)");
@@ -270,8 +265,8 @@ export class PreviewPanel {
 
         } else {
             // 単独ファイルの場合はエディタからデータを抽出して更新
-            writeDebugLog(`Setup .sfd or .glyph: ${this.currentUri}`);
-            const parentDir = getParentUri(this.currentUri);
+            writeDebugLog(`Setup .sfd or .glyph: ${this.document.uri}`);
+            const parentDir = getParentUri(this.document.uri);
             fileName = getDocumentName(document);
             splineFontData = document.getText().split("\n");
 
@@ -312,12 +307,12 @@ export class PreviewPanel {
         const activeEditor = vscode.window.activeTextEditor;
         if (!activeEditor) { return; }
 
-        if (this.isSfdir && this.currentUri) {
+        if (this.isSfdir && this.document) {
             // SFD ディレクトリを開いている場合
             // - font.props が更新された場合は何もしない # TODO: フォントの全体情報を利用する場合は情報を更新する。
             if (event.document.uri === activeEditor.document.uri) { return; }
             // - font.props の管理対象の glyph ファイルが更新された場合は該当のグリフ情報を置き換えて表示を更新する。
-            if (!isUnderDirectory(event.document.uri, getParentUri(this.currentUri))) { return; }
+            if (!isUnderDirectory(event.document.uri, getParentUri(this.document.uri))) { return; }
             this.overrideGlyphData(event.document, "onDidChangeTextDocument(.glyph)");
         } else {
             // 単独ファイルを開いている場合は表示中のファイルが更新された場合のみ情報を更新する
@@ -332,8 +327,8 @@ export class PreviewPanel {
         if (!this.panel) { return; }
         if (!editor) { return; }
         if (
-            editor.document.uri === this.currentUri &&
-            editor.document.version === this.currentVersion
+            editor.document.uri === this.document?.uri &&
+            editor.document.version === this.document?.version
         ) {
             return;
         }
