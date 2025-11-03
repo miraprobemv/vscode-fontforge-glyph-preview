@@ -35,10 +35,8 @@ export class Preview {
 
         } else /* multiple mode*/ {
             const existingPanel = this.panels.filter(x => x.shows(document))[0];
-            if (existingPanel) {
-                // すでにパネルが存在する場合はそれを表示する。（2つ以上プレビューを表示しない）
-                existingPanel.reveal(column);
-            } else {
+            // すでにパネルが存在する場合はそれを表示する。（2つ以上プレビューを表示しない）
+            if (!(existingPanel && existingPanel.tryReveal(column))) {
                 // パネルがない場合は追加してセットアップをする。
                 const newPanel = new PreviewPanel(context, this.panelMode);
                 newPanel.initialize(document, column ?? vscode.ViewColumn.Active);

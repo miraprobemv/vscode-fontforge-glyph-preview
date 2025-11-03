@@ -179,15 +179,16 @@ export class PreviewPanel {
         return document.uri === this.document?.uri;
     }
 
-    public reveal(column: vscode.ViewColumn | undefined) {
-        if (!this.panel) { return; }
+    public tryReveal(column: vscode.ViewColumn | undefined): boolean {
+        if (!this.panel) { return false; }
         this.panel.reveal(column, false);
+        return true;
     }
 
     public async tryReusePanelAsync(document: vscode.TextDocument, column: vscode.ViewColumn | undefined): Promise<boolean> {
         if (!this.panel) { return false; }
 
-        this.reveal(column);
+        this.tryReveal(column);
 
         // プレビュー中のドキュメントでアクティベートされた場合は更新しない。
         // (バージョンの更新は onDidChangeTextDocument で対応しているので考慮しなくてよいはず。)
@@ -246,22 +247,9 @@ export class PreviewPanel {
             if (this.fileWatcher) {
                 this.fileWatcher.dispose();
             }
-            this.fileWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(sfdir, "**/{font.props,*.glyph}") );
-            this.fileWatcher.onDidChange(async (uri) => {
-                if (!this.panel) { return; }
-                if (!this.isSfdir) { return; }
-                writeDebugLog(`Filesystem change detected: ${uri.fsPath}`);
-
-                // 変更されたファイルが SFD ディレクトリ内にある場合、グリフ情報を更新してグリフを更新する。
-                if (!isUnderDirectory(uri, sfdir)) { return; }
-                await sleep(30); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
-                if (getFileBaseName(uri.path) === "font.props") {
-                    this.document = await vscode.workspace.openTextDocument(uri);
-                } else {
-                    const document = await vscode.workspace.openTextDocument(uri);
-                    this.overrideGlyphData(document, "onFileSystemChange(.glyph)");
-                }
-            });
+            this.fileWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(sfdir, "{font.props,*.glyph}"));
+            this.fileWatcher.onDidCreate((uri) => this.onDidSfdirSubFileChanged(uri, "create"));
+            this.fileWatcher.onDidChange((uri) => this.onDidSfdirSubFileChanged(uri, "change"));
 
         } else {
             // 単独ファイルの場合はエディタからデータを抽出して更新
@@ -274,14 +262,8 @@ export class PreviewPanel {
             if (this.fileWatcher) {
                 this.fileWatcher.dispose();
             }
-            this.fileWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(parentDir, fileName) );
-            this.fileWatcher.onDidChange(async (uri) => {
-                if (!this.panel) { return; }
-                writeDebugLog(`Filesystem change detected: ${uri.fsPath}`);
-                await sleep(30); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
-                const document = await vscode.workspace.openTextDocument(uri);
-                this.overrideGlyphData(document, "onFileSystemChange(.sfd or .glyph)");
-            });
+            this.fileWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(parentDir, fileName));
+            this.fileWatcher.onDidChange((uri) => this.onDidSingleFileChanged(uri, "change"));
         }
         postMessage(this.panel, "updateFontData", {
             fileName: fileName,
@@ -293,6 +275,8 @@ export class PreviewPanel {
 
     private overrideGlyphData(document: vscode.TextDocument, timing: string) {
         if (!this.panel) { return; }
+        if (document.version === this.dirGlyphVersions.get(document.uri)) { return; }
+        this.dirGlyphVersions.set(document.uri, document.version);
         const glyphData = document.getText().split('\n');
         postMessage(this.panel, "overrideGlyphData", {
             glyphData: glyphData,
@@ -304,19 +288,18 @@ export class PreviewPanel {
         event: vscode.TextDocumentChangeEvent,
     ) {
         if (!this.panel) { return; }
-        const activeEditor = vscode.window.activeTextEditor;
-        if (!activeEditor) { return; }
+        if (!this.document) { return; }
 
-        if (this.isSfdir && this.document) {
+        if (this.isSfdir) {
             // SFD ディレクトリを開いている場合
             // - font.props が更新された場合は何もしない # TODO: フォントの全体情報を利用する場合は情報を更新する。
-            if (event.document.uri === activeEditor.document.uri) { return; }
+            if (event.document.uri === this.document.uri) { return; }
             // - font.props の管理対象の glyph ファイルが更新された場合は該当のグリフ情報を置き換えて表示を更新する。
             if (!isUnderDirectory(event.document.uri, getParentUri(this.document.uri))) { return; }
             this.overrideGlyphData(event.document, "onDidChangeTextDocument(.glyph)");
         } else {
             // 単独ファイルを開いている場合は表示中のファイルが更新された場合のみ情報を更新する
-            if (event.document.uri !== activeEditor.document.uri) { return; }
+            if (event.document.uri !== this.document.uri) { return; }
             await this.updatePreviewAsync(event.document, "onDidChangeTextDocument(.sfd or .glyph)");
         }
     }
@@ -334,5 +317,33 @@ export class PreviewPanel {
         }
         this.currentGlyph = undefined;
         await this.updatePreviewAsync(editor.document, "onDidChangeActiveTextEditor");
+    }
+
+    private async onDidSingleFileChanged(uri: vscode.Uri, timing: string) {
+        if (!this.panel) { return; }
+        // writeDebugLog(`Filesystem ${timing} detected: ${uri.fsPath}`);
+
+        await this.waitFileFlush(); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
+        const document = await vscode.workspace.openTextDocument(uri);
+        this.overrideGlyphData(document, `onDidSingleFileChanged(${uri}, ${timing})`);
+
+    }
+    
+    private async onDidSfdirSubFileChanged(uri: vscode.Uri, timing: string) {
+        if (!this.panel) { return; }
+        if (!this.isSfdir) { return; }
+        // writeDebugLog(`Filesystem ${timing} detected: ${uri.fsPath}`);
+
+        await this.waitFileFlush(); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
+        if (getFileBaseName(uri.path) === "font.props") {
+            this.document = await vscode.workspace.openTextDocument(uri);
+        } else {
+            const document = await vscode.workspace.openTextDocument(uri);
+            this.overrideGlyphData(document, `onDidSfdirSubFileChanged(${uri}, ${timing})`);
+        }
+    }
+
+    private waitFileFlush() {
+        return sleep(30);
     }
 }
