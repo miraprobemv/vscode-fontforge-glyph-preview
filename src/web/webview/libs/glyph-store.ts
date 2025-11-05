@@ -1,10 +1,16 @@
+import { extractFontWidth, extractLayerData, parseReferDataAsync, parseSplineSet, GlyphDataStringFetcher } from "./sfd";
+import { GlyphData } from "./glyph";
+
+
 export class GlyphStore {
     glyphs: Map<number, string[] | undefined>;
+    glyphCache: Map<number, GlyphData>;
     nameToGid: Map<string, number>;
 
     constructor() {
         this.glyphs = new Map();
         this.nameToGid = new Map();
+        this.glyphCache = new Map();
     }
 
     parseAllGlyphs(sfdData: string[]) {
@@ -50,6 +56,9 @@ export class GlyphStore {
         if (name) {
             this.nameToGid.set(name, gid);
         }
+        if (this.glyphCache.has(gid)) {
+            this.glyphCache.delete(gid);
+        }
     }
 
     getGlyphGid(name: string): number | undefined {
@@ -60,8 +69,25 @@ export class GlyphStore {
         return this.glyphs.has(gid);
     }
 
-    getGlyphData(gid: number): string[] | undefined {
+    getGlyphDataString(gid: number): string[] | undefined {
         return this.glyphs.get(gid);
+    }
+
+    async getGlyphDataAsync(gid: number, getGlyphDataStringAsync: GlyphDataStringFetcher): Promise<GlyphData | undefined> {
+        
+        const glyphData = await getGlyphDataStringAsync(gid);
+        if (!glyphData) { return; }
+
+        const fontWidth = extractFontWidth(glyphData);
+        const { splineSet, refers } = extractLayerData("Fore", glyphData);
+
+        const glyphPaths = parseSplineSet(splineSet);
+        const glyphRefers = await parseReferDataAsync(refers, getGlyphDataStringAsync);
+        return {
+            width: fontWidth,
+            paths: glyphPaths,
+            refers: glyphRefers,
+        };
     }
 
     getAllGlyphNameToGidList(): [string, number][] {
@@ -73,5 +99,9 @@ export class GlyphStore {
     clear() {
         this.glyphs.clear();
         this.nameToGid.clear();
+    }
+    
+    dispose(): void {
+        this.clear();
     }
 }

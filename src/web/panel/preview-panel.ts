@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { generateNonce, getDocumentName, getFileBaseName, getParentUri, isUnderDirectory, writeDebugLog, sleep } from "./util";
 import { getGlyphFileDataAsync, iterateGlyphFileDataAsync } from "./sfd";
 import { postMessage, returnMessageAsync } from "./interop";
+import { PreviewSettings } from "../interop/types";
 
 export class PreviewPanel {
     private context: vscode.ExtensionContext;
@@ -9,6 +10,7 @@ export class PreviewPanel {
     private panel: vscode.WebviewPanel | undefined;
 
     private panelMode: string;
+    private settings!: PreviewSettings;
 
     private document: vscode.TextDocument | undefined;
     // 表示しているドキュメントの関連情報
@@ -25,7 +27,24 @@ export class PreviewPanel {
     constructor(context: vscode.ExtensionContext, mode: string) {
         this.context = context;
         this.panelMode = mode;
+        // this.getPreviewSettings();
         writeDebugLog(`Preview panel is intialized as ${this.panelMode} mode.`);
+        
+        // vscode.workspace.onDidChangeConfiguration((e) => {
+        //     if (e.affectsConfiguration("fontforge-glyph-preview.preview.default")) {
+        //         this.getPreviewSettings();
+        //     }
+        // });
+    }
+
+    private getPreviewSettings() {
+        const config = vscode.workspace.getConfiguration("fontforge-glyph-preview.preview.default");
+        this.settings = {
+            ...this.settings,
+            showsCurvatureCombs: config.get<boolean>("view.curvatureCombs", false),
+            displayType: config.get<string>("view.displayType", "metrics"),
+        };
+        writeDebugLog(`Intialize updateSettings settings=${JSON.stringify(this.settings)}.`);
     }
 
     public get isActive(): boolean {
@@ -37,6 +56,7 @@ export class PreviewPanel {
     }
 
     public initialize(document: vscode.TextDocument, column: vscode.ViewColumn) {
+        this.getPreviewSettings();
 
         this.document = document;
         // パネルを追加してセットアップをする。
@@ -93,6 +113,10 @@ export class PreviewPanel {
                         async (params) => await this.fetchGlyphDataFromOtherFile(params.gid),
                     );
                     break;
+                case "updateSettings":
+                    writeDebugLog(`Recieve updateSettings settings=${JSON.stringify(message.params)}.`);
+                    this.settings = message.params;
+                    break;
                 case "writeDebugLog":
                     // デバッグメッセージの表示。
                     writeDebugLog(message.params.message);
@@ -145,19 +169,7 @@ export class PreviewPanel {
                 <link rel="stylesheet" href="${cssUri}">
             </head>
             <body class="preview-body">
-                <header class="header">
-                    <div class="file-name-container">
-                        <span id="file-name" class="file-name"></span>
-                    </div>
-                    <div class="glyph-name-container">
-                        <button type="button" id="open-side-menu-button" class="open-side-menu-button">&gt;</button>
-                        <span class="glyph-name-title">Glyph Name: </span><span id="glyph-name" class="glyph-name"></span>
-                    </div>
-                </header>
-                <aside id="side-menu" class="side-menu _closed">
-                    <div id="glyph-list-container" class="glyph-list-container"></div>
-                </aside>
-                <div id="glyph-container" class="glyph-image"></div>
+                <div id="root"></div>
 				<script type="module" nonce="${nonce}" src="${jsUri}"></script>
             </body>
             </html>
@@ -165,11 +177,13 @@ export class PreviewPanel {
     }
 
     private async showWebviewFirstViewAsync() {
+        if (!this.panel) { return; }
         writeDebugLog(`Extension get ready message.`);
         if (!this.document) {
             writeDebugLog(`document is not found`);
             return;
         }
+        postMessage(this.panel, "updateSettings", this.settings);
         // 初期表示をする。
         writeDebugLog(`Current editor is "${getDocumentName(this.document)}".`,);
         await this.updatePreviewAsync(this.document, "onReady");
@@ -344,6 +358,6 @@ export class PreviewPanel {
     }
 
     private waitFileFlush() {
-        return sleep(30);
+        return sleep(100); // ファイルのフラッシュが追い付いていないみたいなのでややまつ。
     }
 }

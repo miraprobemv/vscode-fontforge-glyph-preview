@@ -19,24 +19,29 @@
   "categories": [
     "Visualization"
   ],
-  "keywords": ["fontforge", "font"],
+  "keywords": [
+    "fontforge",
+    "font"
+  ],
   "activationEvents": [],
   "browser": "./dist/web/extension.js",
   "contributes": {
-    "languages": [{
-      "id": "sfd",
-      "aliases": [
-        "Spline Font Database",
-        "sfd"
-      ],
-      "extensions": [
-        ".sfd",
-        ".glyph"
-      ],
-      "filenames": [
-        "font.props"
-      ]
-    }],
+    "languages": [
+      {
+        "id": "sfd",
+        "aliases": [
+          "Spline Font Database",
+          "sfd"
+        ],
+        "extensions": [
+          ".sfd",
+          ".glyph"
+        ],
+        "filenames": [
+          "font.props"
+        ]
+      }
+    ],
     "commands": [
       {
         "command": "fontforge-glyph-preview.openPreview",
@@ -79,12 +84,33 @@
         "fontforge-glyph-preview.preview.previewPanelMode": {
           "type": "string",
           "default": "single",
-          "enum": ["single", "multiple"],
+          "enum": [
+            "single",
+            "multiple"
+          ],
           "enumDescriptions": [
             "Always show a single preview panel. When the active text editor changes, the preview panel updates to display the glyph for that editor.",
             "Create a new preview panel each time a preview is opened. Each preview panel is associated with the document it was opened for."
           ],
           "description": "Configure how the preview panel is displayed."
+        },
+        "fontforge-glyph-preview.preview.default.view.displayType": {
+          "type": "string",
+          "default": "metrics",
+          "enum": [
+            "metrics",
+            "preview"
+          ],
+          "enumDescriptions": [
+            "Display anchor points, handles, and other related details.",
+            "Display the glyph's preview image."
+          ],
+          "description": "Configure how glyphs are displayed when the preview is initially shown."
+        },
+        "fontforge-glyph-preview.preview.default.view.curvatureCombs": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Display curvature combs when the preview is initially shown."
         }
       }
     }
@@ -100,20 +126,26 @@
     "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. ."
   },
   "devDependencies": {
-    "@types/vscode": "^1.103.0",
-    "@types/mocha": "^10.0.10",
     "@types/assert": "^1.5.11",
-    "eslint": "^9.32.0",
+    "@types/mocha": "^10.0.10",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@types/vscode": "^1.103.0",
+    "@types/webpack-env": "^1.18.8",
     "@typescript-eslint/eslint-plugin": "^8.39.0",
     "@typescript-eslint/parser": "^8.39.0",
-    "mocha": "^11.7.1",
-    "typescript": "^5.9.2",
     "@vscode/test-web": "^0.0.72",
-    "ts-loader": "^9.5.2",
-    "webpack": "^5.101.0",
-    "webpack-cli": "^6.0.1",
-    "@types/webpack-env": "^1.18.8",
     "assert": "^2.1.0",
-    "process": "^0.11.10"
+    "eslint": "^9.32.0",
+    "mocha": "^11.7.1",
+    "process": "^0.11.10",
+    "ts-loader": "^9.5.2",
+    "typescript": "^5.9.2",
+    "webpack": "^5.101.0",
+    "webpack-cli": "^6.0.1"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
   }
 }

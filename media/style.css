@@ -4,10 +4,13 @@
 
 /* fallback */
 :root {
+    --ui-background-color: var(--vscode-editorStickyScroll-background, #fefefe);
+    --ui-foreground-color: var(--vscode-foreground, #333333);
     --axis-color: var(--vscode-chart-axis, #11111166);
     --font-width-line-color: var(--vscode-chart-axis, #11111166);
     --background-color: var(--vscode-editor-background, #fafafa);
     --foreground-color: var(--vscode-editor-foreground, #111111);
+    --glyph-preview-color: var(--vscode-editor-foreground, #111111);
     --glyph-stroke-color: var(--vscode-editor-foreground, #111111);
     --glyph-fill-color: color-mix(in srgb, var(--vscode-editor-foreground, #111111) 20%, transparent);
     --point-color: var(--vscode-debugTokenExpression-value, #111111aa);
@@ -15,6 +18,7 @@
     --backward-handle-color: var(--vscode-debugTokenExpression-name, #773366);
     --refer-glyph-stroke-color: var(--vscode-textLink-foreground, #3388cc);
     --refer-glyph-fill-color: color-mix(in srgb, var(--vscode-textLink-foreground, #3388cc) 20%, transparent);
+    --curvature-comb-color: color-mix(in srgb, var(--vscode-debugTokenExpression-string, #885533) 25%, transparent);
     --ui-shadow-color: var(--vscode-sideBar-shadow, #00000033);
     --default-font-size: var(--vscode-font-size, 14px);
     --default-line-height: calc(var(--default-font-size) * 1.5);
@@ -34,8 +38,8 @@ body {
 header {
     width: 100%;
     height: calc(var(--default-line-height) * 2 + 10px);
-    background-color: var(--background-color);
-    color: var(--foreground-color);
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
     box-sizing: border-box;
     padding: 0 10px;
     box-shadow: 2px 0 5px var(--ui-shadow-color);
@@ -43,11 +47,17 @@ header {
 }
 
 .file-name-container {
+    height: var(--default-line-height);
     padding: 0 10px;
     font-weight: bold;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.menu-container {
+    display: flex;
+    justify-content: space-between;
 }
 
 .open-side-menu-button {
@@ -69,8 +79,8 @@ header {
     left: 0;
     width: 300px;
     height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
-    background-color: var(--background-color);
-    color: var(--foreground-color);
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
     box-shadow: 2px 0 5px var(--ui-shadow-color);
     overflow-y: auto;
     z-index: 1000;
@@ -94,8 +104,43 @@ header {
     cursor: pointer;
 }
 .side-menu .glyph-list-container ul li:hover {
-    background-color: var(--foreground-color);
-    color: var(--background-color);
+    background-color: var(--ui-foreground-color);
+    color: var(--ui-background-color);
+}
+.menu-item {
+    position: relative;
+    margin: auto 1em;
+}
+
+.menu-dropdown {
+    position: absolute;
+    padding: 8px 0;
+    bottom: 0;
+    right: -4px;
+    display: none;
+    width: max-content;
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
+    box-shadow: 2px 0 5px var(--ui-shadow-color);
+    transform: translate(0, 100%);
+}
+
+.menu-dropdown ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.menu-dropdown ul ul {
+    margin-left: 10px;
+}
+.menu-dropdown ul li {
+    padding: 1px 12px 3px;
+    cursor: pointer;
+}
+
+.menu-item:hover > .menu-dropdown,
+.menu-item:focus-within > .menu-dropdown {
+    display: block;
 }
 
 .glyph-image .glyph-svg {
@@ -111,9 +156,20 @@ header {
 .glyph-image .font-width-line {
     stroke: var(--font-width-line-color);
 }
+.glyph-image .glyph-preview {
+    fill: var(--glyph-preview-color);
+    stroke: transparent;
+}
 .glyph-image .glyph-path {
     fill: var(--glyph-fill-color);
     stroke: var(--glyph-stroke-color);
+}
+.glyph-image .curvature-comb {
+    stroke: var(--curvature-comb-color);
+}
+.glyph-image .glyph-path-interporation {
+    fill: var(--glyph-fill-color);
+    stroke: transparent;
 }
 .glyph-image .refer-glyph-path {
     fill: var(--refer-glyph-fill-color);
