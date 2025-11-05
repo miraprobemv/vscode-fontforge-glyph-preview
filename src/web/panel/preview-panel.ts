@@ -114,7 +114,7 @@ export class PreviewPanel {
                     );
                     break;
                 case "updateSettings":
-                    writeDebugLog(`Recieve updateSettings settings=${JSON.stringify(message.params)}.`);
+                    writeDebugLog(`Update panel settings=${JSON.stringify(message.params)}.`);
                     this.settings = message.params;
                     break;
                 case "writeDebugLog":
@@ -248,6 +248,8 @@ export class PreviewPanel {
         let splineFontData: string[];
         if (this.isSfdir) {
             // SFD ディレクトリの場合は font.props と同じディレクトリの glyph ファイルを登録する。
+            // 時間がかかるのでローディングを表示する。
+            postMessage(this.panel, "loading", {});
             writeDebugLog(`Setup font.props: ${this.document.uri}`);
             const sfdir = getParentUri(this.document.uri);
             fileName = getFileBaseName(sfdir.path);

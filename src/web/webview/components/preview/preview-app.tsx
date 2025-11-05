@@ -7,6 +7,7 @@ import { GlyphData } from "../../libs/glyph";
 import { postMessage, sendMessageAsync, writeDebugLog } from "../../libs/interop";
 import { extractGid, extractGlyphName } from "../../libs/sfd";
 import { usePreviewSettings } from "../../hooks/preview-settings";
+import { Loading } from "../ui/loading";
 
 export function PreviewApp() {
     const vscode = useVscodeApi();
@@ -21,6 +22,9 @@ export function PreviewApp() {
 
     const defaultGlyphData = { width: 0, paths: [], refers: [] };
     const [glyphData, setGlyphData] = useState<GlyphData>(defaultGlyphData);
+    
+    const [isLoading, setIsLoading] = useState(false);
+    const [isReady, setIsReady] = useState(false);
 
     const handleDisplayTypeChanged = (type: string) => {
         setSettings(state => {
@@ -83,44 +87,61 @@ export function PreviewApp() {
 
     // メッセージ受信
     const onMessage = useCallback(async (event: MessageEvent) => {
-        if (event.data.type === "updateFontData") {
-            const params = event.data.params;
-            writeDebugLog(vscode, "Received Font Data at " + params.timing + ".");
+        switch (event.data.type) {
+            case "updateFontData":
+                {
+                    const params = event.data.params;
+                    writeDebugLog(vscode, "Received Font Data at " + params.timing + ".");
 
-            setFileName(params.fileName);
+                    setFileName(params.fileName);
 
-            glyphStore.clear();
-            glyphStore.parseAllGlyphs(params.fontData);
-            writeDebugLog(vscode, "Update Glyph Store at " + params.timing + ".");
+                    glyphStore.clear();
+                    glyphStore.parseAllGlyphs(params.fontData);
+                    writeDebugLog(vscode, "Update Glyph Store at " + params.timing + ".");
 
-            const glyphNameToGidList = glyphStore.getAllGlyphNameToGidList();
-            setNameToGidList(glyphNameToGidList);
+                    const glyphNameToGidList = glyphStore.getAllGlyphNameToGidList();
+                    setNameToGidList(glyphNameToGidList);
 
-            if (params.startupGlyph) {
-                const name = params.startupGlyph;
-                const gid = glyphStore.getGlyphGid(name);
-                if (!gid) { return; }
-                await showGlyphDataAsync(name, gid);
-            } else if (glyphNameToGidList.length > 0) {
-                const [name, gid] = glyphNameToGidList[0];
-                await showGlyphDataAsync(name, gid);
-            }
-        } else if (event.data.type === "overrideGlyphData") {
-            const params = event.data.params;
-            writeDebugLog(vscode, `Received Glyph Data at ${params.timing}. (showing ${glyphName})`);
-            const gid = extractGid(params.glyphData);
-            const name = extractGlyphName(params.glyphData);
-            glyphStore.addGlyph(gid, name, params.glyphData);
+                    setIsLoading(false);
+                    if (params.startupGlyph) {
+                        const name = params.startupGlyph;
+                        const gid = glyphStore.getGlyphGid(name);
+                        if (!gid) { return; }
+                        await showGlyphDataAsync(name, gid);
+                    } else if (glyphNameToGidList.length > 0) {
+                        const [name, gid] = glyphNameToGidList[0];
+                        await showGlyphDataAsync(name, gid);
+                    }
+                }
+                break;
+            case "overrideGlyphData":
+                {
+                    const params = event.data.params;
+                    writeDebugLog(vscode, `Received Glyph Data at ${params.timing}. (showing ${glyphName})`);
+                    const gid = extractGid(params.glyphData);
+                    const name = extractGlyphName(params.glyphData);
+                    glyphStore.addGlyph(gid, name, params.glyphData);
 
-            const glyphNameToGidList = glyphStore.getAllGlyphNameToGidList();
-            setNameToGidList(glyphNameToGidList);
-            if (name === glyphName) {
-                writeDebugLog(vscode, "Updete overrided glyph: " + name);
-                await showGlyphDataAsync(name, gid);
-            }
-        } else if (event.data.type === "updateSettings") {
-            writeDebugLog(vscode, `Recieve updateSettings settings=${JSON.stringify(event.data.param)}.`);
-            setSettings(event.data.params);
+                    const glyphNameToGidList = glyphStore.getAllGlyphNameToGidList();
+                    setNameToGidList(glyphNameToGidList);
+                    if (name === glyphName) {
+                        writeDebugLog(vscode, "Updete overrided glyph: " + name);
+                        await showGlyphDataAsync(name, gid);
+                    }
+                }
+                break;
+            case "updateSettings":
+                {
+                    writeDebugLog(vscode, `Recieve updateSettings settings=${JSON.stringify(event.data.param)}.`);
+                    setSettings(event.data.params);
+                }
+                break;
+            case "loading":
+                {
+                    writeDebugLog(vscode, "Patient...");
+                    setIsLoading(true);
+                }
+                break;
         }
     }, [glyphName, glyphStore, getReferGlyphDataStringAsync]);
 
@@ -128,9 +149,17 @@ export function PreviewApp() {
         const onMessageCallback = onMessage;
         window.addEventListener("message", onMessageCallback);
         // ready を通知（既存コードと同様）
-        writeDebugLog(vscode, "Event Listener Registered.");
-        postMessage(vscode, "ready");
-        return () => window.removeEventListener("message", onMessageCallback);
+        if (!isReady) {
+            writeDebugLog(vscode, "Event Listener Registered.");
+            postMessage(vscode, "ready");
+            setIsReady(true);
+        } else {
+            writeDebugLog(vscode, "Event Listener Updated.");
+        }
+        return () => {
+            window.removeEventListener("message", onMessageCallback);
+            writeDebugLog(vscode, "Event Listener Removed.");
+        };
     }, [onMessage]);
 
     return (
@@ -143,7 +172,7 @@ export function PreviewApp() {
                         <span className="glyph-name-title">Glyph Name: </span><span className="glyph-name">{glyphName}</span>
                     </div>
                     <div className="sub-menu-container">
-                        <span className="menu-item">View
+                        <span className="menu-item"><label>View</label>
                             <aside className="menu-dropdown">
                                 <ul>
                                     <li>
@@ -165,6 +194,7 @@ export function PreviewApp() {
             </header>
             <GlyphList nameToGidList={nameToGidList} open={isGlyphSelectorOpen} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />
             <GlyphOutline glyphData={glyphData} settings={settings}></GlyphOutline>
+            {isLoading && <Loading />}
         </div>
     );
 }
