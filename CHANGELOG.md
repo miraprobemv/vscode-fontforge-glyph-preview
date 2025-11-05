@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.1.0]
+
+- Added multiple preview panel mode
+- Added view options
+  - Show curvature combs
+  - Show preview image
+- Added extension configuration options
+
 ## [0.0.2]
 
 - Fixed the order of the layers
