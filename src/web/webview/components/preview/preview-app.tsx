@@ -5,7 +5,7 @@ import { useGlyphStore } from "../../hooks/glyph-store";
 import { useVscodeApi } from "../../hooks/vscode-api";
 import { GlyphData } from "../../libs/glyph";
 import { postMessage, sendMessageAsync, writeDebugLog } from "../../libs/interop";
-import { extractGid, extractGlyphName } from "../../libs/sfd";
+import { extractEncoding, extractGid, extractGlyphName, GlyphEncoding } from "../../libs/sfd";
 import { usePreviewSettings } from "../../hooks/preview-settings";
 import { Loading } from "../ui/loading";
 
@@ -14,7 +14,7 @@ export function PreviewApp() {
     const glyphStore = useGlyphStore();
     const { previewSettings: settings, setPreviewSettings: setSettings } = usePreviewSettings();
 
-    const [nameToGidList, setNameToGidList] = useState<[name: string, gid: number][]>([]);
+    const [nameToEncodingList, setNameToEncodingList] = useState<[name: string, encoding: GlyphEncoding][]>([]);
     const [isGlyphSelectorOpen, setIsGlyphSelectorOpen] = useState(false);
 
     const [fileName, setFileName] = useState("");
@@ -73,11 +73,12 @@ export function PreviewApp() {
                     "fetchGlyphDataFromOtherFile",
                     { gid: gid }
                 );
-                const glyphName = glyphData[0].split(" ")[1];
-                glyphStore.addGlyph(gid, glyphName, glyphData);
+                const glyphName = extractGlyphName(glyphData);
+                const glyphEncoding = extractEncoding(glyphData);
+                glyphStore.addGlyph(gid, glyphName, glyphEncoding, glyphData);
                 return glyphData;
             } catch (error) {
-                glyphStore.addGlyph(gid, undefined, undefined);
+                glyphStore.addGlyph(gid, undefined, undefined, undefined);
                 return undefined;
             }
         }
@@ -98,8 +99,8 @@ export function PreviewApp() {
                     glyphStore.parseAllGlyphs(params.fontData);
                     writeDebugLog(vscode, "Update Glyph Store at " + params.timing + ".");
 
-                    const glyphNameToGidList = glyphStore.getAllGlyphNameToGidList();
-                    setNameToGidList(glyphNameToGidList);
+                    const glyphNameToEncodingList = glyphStore.getAllGlyphNameToEncodingList();
+                    setNameToEncodingList(glyphNameToEncodingList);
 
                     setIsLoading(false);
                     if (params.startupGlyph) {
@@ -107,8 +108,8 @@ export function PreviewApp() {
                         const gid = glyphStore.getGlyphGid(name);
                         if (!gid) { return; }
                         await showGlyphDataAsync(name, gid);
-                    } else if (glyphNameToGidList.length > 0) {
-                        const [name, gid] = glyphNameToGidList[0];
+                    } else if (glyphNameToEncodingList.length > 0) {
+                        const [name, {gid}] = glyphNameToEncodingList[0];
                         await showGlyphDataAsync(name, gid);
                     }
                 }
@@ -117,15 +118,15 @@ export function PreviewApp() {
                 {
                     const params = event.data.params;
                     writeDebugLog(vscode, `Received Glyph Data at ${params.timing}. (showing ${glyphName})`);
-                    const gid = extractGid(params.glyphData);
                     const name = extractGlyphName(params.glyphData);
-                    glyphStore.addGlyph(gid, name, params.glyphData);
+                    const glyphEncoding = extractEncoding(params.glyphData);
+                    glyphStore.addGlyph(glyphEncoding.gid, name, glyphEncoding, params.glyphData);
 
-                    const glyphNameToGidList = glyphStore.getAllGlyphNameToGidList();
-                    setNameToGidList(glyphNameToGidList);
+                    const glyphNameToEncodingList = glyphStore.getAllGlyphNameToEncodingList();
+                    setNameToEncodingList(glyphNameToEncodingList);
                     if (name === glyphName) {
                         writeDebugLog(vscode, "Updete overrided glyph: " + name);
-                        await showGlyphDataAsync(name, gid);
+                        await showGlyphDataAsync(name, glyphEncoding.gid);
                     }
                 }
                 break;
@@ -161,7 +162,7 @@ export function PreviewApp() {
                 <div className="file-name-container"><span>{fileName}</span></div>
                 <div className="menu-container">
                     <div className="glyph-name-container">
-                        <button type="button" className="open-side-menu-button" disabled={nameToGidList.length <= 1} onClick={_ => handleToggleGlyphSelectorOpen()}>&gt;</button>
+                        <button type="button" className="open-side-menu-button" disabled={nameToEncodingList.length <= 1} onClick={_ => handleToggleGlyphSelectorOpen()}>&gt;</button>
                         <span className="glyph-name-title">Glyph Name: </span><span className="glyph-name">{glyphName}</span>
                     </div>
                     <div className="sub-menu-container">
@@ -185,7 +186,7 @@ export function PreviewApp() {
                     </div>
                 </div>
             </header>
-            <GlyphList nameToGidList={nameToGidList} open={isGlyphSelectorOpen} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />
+            <GlyphList nameToEncodingList={nameToEncodingList} open={isGlyphSelectorOpen} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />
             <GlyphOutline glyphData={glyphData} settings={settings}></GlyphOutline>
             {isLoading && <Loading />}
         </div>

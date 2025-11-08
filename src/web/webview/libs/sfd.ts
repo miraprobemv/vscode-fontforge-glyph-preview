@@ -30,6 +30,23 @@ export function extractGid(sfdData: string[]): number {
     throw new Error("GID is not found.");
 }
 
+export function extractEncoding(sfdData: string[]): GlyphEncoding {
+    for (const line of sfdData) {
+        if (line.startsWith("Encoding:")) {
+            const parts = line.split(" ");
+            if (parts.length >= 4) {
+                const encoding = {
+                    codepoint: parseInt(parts[1], 10),
+                    unicode: parseInt(parts[2], 10),
+                    gid: parseInt(parts[3], 10),
+                };
+                return encoding;
+            }
+        }
+    }
+    throw new Error("GID is not found.");
+}
+
 export function extractFontWidth(lines: string[]): number {
     for (const line of lines) {
         if (line.startsWith("Width:")) {
@@ -158,3 +175,8 @@ export async function parseReferDataAsync(
     }
     return referDataList;
 }
+export type GlyphEncoding = {
+    codepoint: number;
+    unicode: number;
+    gid: number;
+};

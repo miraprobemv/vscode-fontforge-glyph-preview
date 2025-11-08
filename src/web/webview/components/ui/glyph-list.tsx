@@ -1,13 +1,14 @@
 import React, { useCallback } from "react";
+import { GlyphEncoding } from "../../libs/sfd";
 
 type Props = {
-    nameToGidList: [name: string, gid: number][];
+    nameToEncodingList: [name: string, encoding: GlyphEncoding][];
     open: boolean;
     onClose: () => void;
     onItemSelected: (name: string, gid: number) => void;
 };
 export default function GLyphList({
-    nameToGidList,
+    nameToEncodingList,
     open,
     onClose,
     onItemSelected: onItemClick,
@@ -20,10 +21,10 @@ export default function GLyphList({
     }, [onClose, onItemClick]);
     
     return (
-        <aside className={"side-menu " + ((open && (nameToGidList.length >= 2)) ? "" : "_closed")}>
+        <aside className={"side-menu " + ((open && (nameToEncodingList.length >= 2)) ? "" : "_closed")}>
             <div className="glyph-list-container">
                 <ul>
-                    {nameToGidList.map(([name, gid]) => {
+                    {nameToEncodingList.map(([name, {gid}]) => {
                         return (
                             <li key={name} onClick={_ => handleOnClick(name, gid)}>{name}</li>
                         );

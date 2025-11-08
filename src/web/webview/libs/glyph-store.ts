@@ -1,20 +1,19 @@
-import { extractFontWidth, extractLayerData, parseReferDataAsync, parseSplineSet, GlyphDataStringFetcher } from "./sfd";
+import { extractFontWidth, extractLayerData, parseReferDataAsync, parseSplineSet, GlyphDataStringFetcher, GlyphEncoding } from "./sfd";
 import { GlyphData } from "./glyph";
-
 
 export class GlyphStore {
     glyphs: Map<number, string[] | undefined>;
     glyphCache: Map<number, GlyphData>;
-    nameToGid: Map<string, number>;
+    nameToEncoding: Map<string, GlyphEncoding>;
 
     constructor() {
         this.glyphs = new Map();
-        this.nameToGid = new Map();
+        this.nameToEncoding = new Map();
         this.glyphCache = new Map();
     }
 
     parseAllGlyphs(sfdData: string[]) {
-        let currentGID = -1;
+        let currentEncoding = null;
         let currentGlyphName = null;
         let currentGlyphData: string[] = [];
         let inGlyph = false;
@@ -27,10 +26,10 @@ export class GlyphStore {
             } else if (line.startsWith("EndChar")) {
                 if (inGlyph && currentGlyphName) {
                     currentGlyphData.push(line);
-                    if (currentGID !== -1) {
-                        this.addGlyph(currentGID, currentGlyphName, currentGlyphData);
+                    if (currentEncoding !== null) {
+                        this.addGlyph(currentEncoding.gid, currentGlyphName, currentEncoding, currentGlyphData);
                     }
-                    currentGID = -1;
+                    currentEncoding = null;
                     currentGlyphName = null;
                     currentGlyphData = [];
                     inGlyph = false;
@@ -39,7 +38,11 @@ export class GlyphStore {
                 if (line.startsWith("Encoding:")) {
                     const parts = line.split(" ");
                     if (parts.length >= 4) {
-                        currentGID = parseInt(parts[3], 10);
+                        currentEncoding = {
+                            codepoint: parseInt(parts[1], 10),
+                            unicode: parseInt(parts[2], 10),
+                            gid: parseInt(parts[3], 10),
+                        };
                     }
                 }
                 currentGlyphData.push(line);
@@ -50,11 +53,12 @@ export class GlyphStore {
     addGlyph(
         gid: number,
         name: string | undefined,
+        encoding: GlyphEncoding | undefined,
         glyphData: string[] | undefined,
     ) {
         this.glyphs.set(gid, glyphData);
-        if (name) {
-            this.nameToGid.set(name, gid);
+        if (name && encoding) {
+            this.nameToEncoding.set(name, encoding);
         }
         if (this.glyphCache.has(gid)) {
             this.glyphCache.delete(gid);
@@ -62,7 +66,7 @@ export class GlyphStore {
     }
 
     getGlyphGid(name: string): number | undefined {
-        return this.nameToGid.get(name);
+        return this.nameToEncoding.get(name)?.gid;
     }
 
     has(gid: number): boolean {
@@ -90,15 +94,28 @@ export class GlyphStore {
         };
     }
 
-    getAllGlyphNameToGidList(): [string, number][] {
-        return Array.from(this.nameToGid.entries()).sort(
+    getAllGlyphNameToGidList(): [name: string, gid: number][] {
+        return Array.from(this.nameToEncoding.entries()).map(([name, encoding]) => [name, encoding.gid] as [string, number]).sort(
+            (a, b) => (a[0] < b[0]) ? -1 : (a[0] > b[0]) ? +1 : 0
+        );
+    }
+
+    getAllGlyphNameToEncodingList(): [name: string, encoding: GlyphEncoding][] {
+        return Array.from(this.nameToEncoding.entries()).sort(
+            (a, b) => (a[0] < b[0]) ? -1 : (a[0] > b[0]) ? +1 : 0
+        );
+    }
+    
+    getAllGlyphEncodingList(): [codepoint: number, name: string, gid: number][] {
+        return Array.from(this.nameToEncoding.entries()).map(([name, encoding]) => [encoding.codepoint, name, encoding.gid] as [number, string, number]).sort(
             (a, b) => (a[0] < b[0]) ? -1 : (a[0] > b[0]) ? +1 : 0
         );
     }
 
     clear() {
         this.glyphs.clear();
-        this.nameToGid.clear();
+        this.glyphCache.clear();
+        this.nameToEncoding.clear();
     }
     
     dispose(): void {
