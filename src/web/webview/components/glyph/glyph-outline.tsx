@@ -7,7 +7,7 @@ import SvgGlyphRefer from "./svg-glyph-refer";
 import SvgGlyphCurvatureComb from "./svg-glyph-curvature-comb";
 import { calcCurvatureCombs, calcHandles, GlyphData } from "../../libs/glyph";
 import { estimateViewBox, estimateReferViewBox, mergeViewBox, addMargineToViewBox } from "../../libs/glyph";
-import { PreviewSettings } from "../../../interop/types";
+import { PreviewSettings } from "../../../common/types";
 
 
 type Props = {
@@ -29,7 +29,7 @@ export default function GlyphOutline({
         return viewBox;
     }, [glyphData]);
 
-    const [minX, minY, width, height] = useMemo(() => viewBox, [viewBox]);
+    const [minX, minY, width, height] = viewBox;
     
     const svgElement = useRef<SVGSVGElement | null>(null);
 

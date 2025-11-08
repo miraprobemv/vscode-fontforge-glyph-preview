@@ -16,6 +16,9 @@ export class Preview {
     public async open(context: vscode.ExtensionContext, uri: vscode.Uri | undefined, column?: vscode.ViewColumn) {
         writeDebugLog(`fontforge-glyph-preview.showPreview command is called: ${uri}`);
 
+        // 閉じられたオブジェクトは破棄する。
+        this.panels = this.panels.filter(x => !x.isDisposed);
+
         // プレビューのパネルがアクティブなときにコマンド実行された場合は何もしない。
         if (!uri && this.panels.some(x => x.isActive)) { return; }
 
@@ -23,23 +26,20 @@ export class Preview {
         if (!document) { return; }
         
         if (this.panelMode === "single") {
-            if (this.panels.length === 0) {
-                this.panels.push(new PreviewPanel(context, this.panelMode));
-            }
-            const previewPanel = this.panels[0];
             // すでにパネルが存在する場合はそれを表示する。（2つ以上プレビューを表示しない）
-            if (!await previewPanel.tryReusePanelAsync(document, column)) {
+            const existingPanel = this.panels[0];
+            if (!(existingPanel && await existingPanel.tryReusePanelAsync(document, column))) {
                 // パネルがない場合は追加してセットアップをする。
-                previewPanel.initialize(document, column ?? vscode.ViewColumn.Active);
+                const newPanel = new PreviewPanel(context, this.panelMode, document, column ?? vscode.ViewColumn.Active);
+                this.panels.push(newPanel);
             }
 
         } else /* multiple mode*/ {
-            const existingPanel = this.panels.filter(x => x.shows(document))[0];
             // すでにパネルが存在する場合はそれを表示する。（2つ以上プレビューを表示しない）
+            const existingPanel = this.panels.filter(x => x.shows(document))[0];
             if (!(existingPanel && existingPanel.tryReveal(column))) {
                 // パネルがない場合は追加してセットアップをする。
-                const newPanel = new PreviewPanel(context, this.panelMode);
-                newPanel.initialize(document, column ?? vscode.ViewColumn.Active);
+                const newPanel = new PreviewPanel(context, this.panelMode, document, column ?? vscode.ViewColumn.Active);
                 this.panels.push(newPanel);
             }
         }

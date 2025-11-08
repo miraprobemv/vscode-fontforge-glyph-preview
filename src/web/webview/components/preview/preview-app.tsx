@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useEffectEvent } from "react";
 import GlyphOutline from "../glyph/glyph-outline";
 import GlyphList from "../ui/glyph-list";
 import { useGlyphStore } from "../../hooks/glyph-store";
@@ -24,7 +24,6 @@ export function PreviewApp() {
     const [glyphData, setGlyphData] = useState<GlyphData>(defaultGlyphData);
     
     const [isLoading, setIsLoading] = useState(false);
-    const [isReady, setIsReady] = useState(false);
 
     const handleDisplayTypeChanged = (type: string) => {
         setSettings(state => {
@@ -66,7 +65,7 @@ export function PreviewApp() {
         setGlyphData((await glyphStore.getGlyphDataAsync(gid, getReferGlyphDataStringAsync)) ?? defaultGlyphData);
     };
 
-    const getReferGlyphDataStringAsync = useCallback(async function (gid: number) {
+    const getReferGlyphDataStringAsync = async function (gid: number) {
         if (!glyphStore.has(gid)) {
             try {
                 const glyphData: string[] = await sendMessageAsync(
@@ -83,10 +82,10 @@ export function PreviewApp() {
             }
         }
         return glyphStore.getGlyphDataString(gid);
-    }, [glyphStore]);
+    };
 
     // メッセージ受信
-    const onMessage = useCallback(async (event: MessageEvent) => {
+    const onMessage = useEffectEvent(async (event: MessageEvent) => {
         switch (event.data.type) {
             case "updateFontData":
                 {
@@ -143,24 +142,18 @@ export function PreviewApp() {
                 }
                 break;
         }
-    }, [glyphName, glyphStore, getReferGlyphDataStringAsync]);
+    });
 
     useEffect(() => {
-        const onMessageCallback = onMessage;
-        window.addEventListener("message", onMessageCallback);
-        // ready を通知（既存コードと同様）
-        if (!isReady) {
-            writeDebugLog(vscode, "Event Listener Registered.");
-            postMessage(vscode, "ready");
-            setIsReady(true);
-        } else {
-            writeDebugLog(vscode, "Event Listener Updated.");
-        }
+        const eventHandler = (event: MessageEvent<any>) => onMessage(event);
+        window.addEventListener("message", eventHandler);
+        writeDebugLog(vscode, "Event listener was registered.");
+        postMessage(vscode, "ready");
         return () => {
-            window.removeEventListener("message", onMessageCallback);
-            writeDebugLog(vscode, "Event Listener Removed.");
+            window.removeEventListener("message", eventHandler);
+            writeDebugLog(vscode, "Event listener was removed.");
         };
-    }, [onMessage]);
+    }, []);
 
     return (
         <div className="preview-body">

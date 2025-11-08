@@ -37,6 +37,7 @@ export default function SvgGlyphPath({
             d={data}
             fill="currentColor"
             stroke="currentColor"
-            strokeWidth={scale} />
+            strokeWidth={scale}
+        />
     );
 }

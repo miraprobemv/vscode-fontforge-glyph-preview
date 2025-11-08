@@ -1,5 +1,5 @@
 import React from "react";
-import { PreviewSettings } from "../../interop/types";
+import { PreviewSettings } from "../../common/types";
 
 
 type PreviewSettingsContextType = { previewSettings: PreviewSettings; setPreviewSettings: React.Dispatch<React.SetStateAction<PreviewSettings>> };

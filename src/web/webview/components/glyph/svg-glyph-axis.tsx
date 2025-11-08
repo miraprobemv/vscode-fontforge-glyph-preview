@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { ViewBox } from "../../libs/metrics";
 
 type Props = {
@@ -12,7 +12,7 @@ export default function SvgGlyphAxis({
     scale,
 }: Props) {
 
-    const [minX, minY, width, height] = useMemo(() => viewBox, [viewBox]);
+    const [minX, minY, width, height] = viewBox;
 
     return (
         <g className="font-axis">

@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React from "react";
 import { AffineParam } from "../../libs/metrics";
 
 
@@ -12,7 +12,7 @@ export default function SvgAffineTransform({
     param,
     children,
 }: Props) {
-    const [a, b, c, d, e, f] = useMemo(() => param, [param]);
+    const [a, b, c, d, e, f] = param;
 
     return (
         <g className={className} transform={`matrix(${a} ${b} ${c} ${d} ${e} ${f})`}>
