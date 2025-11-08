@@ -1,4 +1,5 @@
 import { ViewBox, expandRange, AffineParam, affineTransformPoint, Point, bezirPoint, getCircleBy3Points, interpolatePoint } from "./metrics";
+import { mapTuple, zip } from "../../common/util";
 
 export const MARKER_SIZE = 3;
 
@@ -53,6 +54,15 @@ export type Comb = {
     end: Point;
 };
 
+
+export function estimateGlyphViewBox(glyphData: GlyphData): ViewBox {
+    let viewBox = estimateViewBox(glyphData.width, glyphData.paths);
+    if (glyphData.refers.length > 0) {
+        const referViewBox = estimateReferViewBox(glyphData.refers);
+        viewBox = mergeViewBox(viewBox, referViewBox);
+    }
+    return viewBox;
+}
 
 export function estimateViewBox(fontWidth: number, glyphPaths: PathOperation[]): ViewBox {
     let [minX, minY, maxX, maxY] = [0, 0, fontWidth, 0]; // Include matric origin and font width in the viewBox
@@ -207,4 +217,88 @@ export function calcCurvatureCombs(glyphPaths: PathOperation[], scale: number): 
         latest = op.point;
     }
     return combs;
+}
+
+
+export function flattenGlyphPath(glyphData: GlyphData): PathOperation[] {
+
+    const ops: PathOperation[] = [];
+    ops.push(...glyphData.paths);
+    for (const refer of glyphData.refers) {
+        ops.push(...flattenReferGlyphPath(refer));
+    }
+    return ops;
+}
+
+function flattenReferGlyphPath(refers: GlyphRefer): PathOperation[] {
+
+    const ops: PathOperation[] = [];
+    ops.push(...refers.glyphPaths);
+    for (const refer of refers.refers) {
+        ops.push(...flattenReferGlyphPath(refer));
+    }
+    return ops.map(x => affineTransformPath(x, refers.affineParam));
+}
+
+export function affineTransformPath(pathOp: PathOperation, affineParam: AffineParam): PathOperation {
+    const newOp = {...pathOp};
+    newOp.point = affineTransformPoint(newOp.point, affineParam);
+    if (newOp.type === "C") {
+        newOp.controlPoints = mapTuple(newOp.controlPoints, x => affineTransformPoint(x, affineParam));
+    }
+    return newOp;
+}
+ 
+export function interpolatePaths(
+    opList1: PathOperation[],
+    ratio: number,
+    opList2: PathOperation[],
+): PathOperation[] {
+    const pathOps: PathOperation[] = [];
+    let last1: Point = { x: 0, y: 0 };
+    let last2: Point = { x: 0, y: 0 };
+    for (let [op1, op2] of zip(opList1, opList2)) {
+        if (op1.type === "C" || op2.type === "C") {
+            if (op1.type !== "C") {
+                op1 = {
+                    ...op1,
+                    type: "C",
+                    controlPoints: [last1, op1.point]
+                } as PathCurveTo;
+            }
+            if (op2.type !== "C") {
+                op2 = {
+                    ...op2,
+                    type: "C",
+                    controlPoints: [last2, op2.point]
+                } as PathCurveTo;
+            }
+            pathOps.push({
+                type: "C",
+                controlPoints: zip(op1.controlPoints, op2.controlPoints).map(([o1, o2]) => interpolatePoint(o1, ratio, o2)) as [Point, Point],
+                point: interpolatePoint(op1.point, ratio, op2.point),
+                pointType: op1.pointType,
+                start: op1.start,
+            });
+        } else if (op1.type === "M") {
+
+            pathOps.push({
+                type:op1.type,
+                point: interpolatePoint(op1.point, ratio, op2.point),
+                pointType: op1.pointType,
+                start: op1.start,
+            });
+        } else if (op1.type === "L") {
+
+            pathOps.push({
+                type:op1.type,
+                point: interpolatePoint(op1.point, ratio, op2.point),
+                pointType: op1.pointType,
+                start: op1.start,
+            });
+        }
+        last1 = op1.point;
+        last2 = op2.point;
+    }
+    return pathOps;
 }

@@ -83,6 +83,7 @@ const webviewConfig = {
 	target: ["web", "es2020"],
 	entry: {
 		"preview": "./src/web/webview/preview.tsx",
+		"compare": "./src/web/webview/compare.tsx",
 	},
 	output: {
 		filename: "[name].js",
