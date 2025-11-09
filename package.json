@@ -94,6 +94,19 @@
           ],
           "description": "Configure how the preview panel is displayed."
         },
+        "fontforge-glyph-preview.preview.setting.glyphSelectionMode": {
+          "type": "string",
+          "default": "table",
+          "enum": [
+            "table",
+            "list"
+          ],
+          "enumDescriptions": [
+            "Select a glyph from a table of previews sorted by character code.",
+            "Select a glyph from a list of glyph names."
+          ],
+          "description": "Configure how the preview panel is displayed."
+        },
         "fontforge-glyph-preview.preview.default.view.displayType": {
           "type": "string",
           "default": "metrics",

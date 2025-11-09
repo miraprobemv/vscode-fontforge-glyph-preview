@@ -8,6 +8,7 @@ type PreviewSettingsContextType = {
 };
 
 const initialState: PreviewSettings = {
+    glyphSelectionMode: "table",
     displayType: "metrics",
     showsCurvatureCombs: false,
 };

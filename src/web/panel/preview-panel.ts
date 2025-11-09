@@ -28,11 +28,6 @@ export class PreviewPanel {
             (uri, timing) => this.onDidSfdirSubFileChanged(uri, timing),
         );
         this.settings = this.getPreviewSettings();
-        // vscode.workspace.onDidChangeConfiguration((e) => {
-        //     if (e.affectsConfiguration("fontforge-glyph-preview.preview.default")) {
-        //         this.getPreviewSettings();
-        //     }
-        // });
         writeDebugLog(`Preview panel is intialized as ${this.panelMode} mode. settings=${JSON.stringify(this.settings)}`);
 
         // パネルを追加してセットアップをする。
@@ -40,11 +35,12 @@ export class PreviewPanel {
     }
 
     private getPreviewSettings(): PreviewSettings {
-        const config = vscode.workspace.getConfiguration("fontforge-glyph-preview.preview.default");
+        const config = vscode.workspace.getConfiguration("fontforge-glyph-preview.preview");
         const settings = {
             ...this.settings,
-            showsCurvatureCombs: config.get<boolean>("view.curvatureCombs", false),
-            displayType: config.get<string>("view.displayType", "metrics"),
+            glyphSelectionMode: config.get<string>("setting.glyphSelectionMode", "table"),
+            displayType: config.get<string>("default.view.displayType", "metrics"),
+            showsCurvatureCombs: config.get<boolean>("default.view.curvatureCombs", false),
         };
         return settings;
     }
@@ -130,6 +126,18 @@ export class PreviewPanel {
                 this.onDidChangeActiveTextEditor(editor)
             ));
         }
+        
+        this.eventSubscriptions.push(vscode.workspace.onDidChangeConfiguration((e) => {
+            if (!e.affectsConfiguration("fontforge-glyph-preview.preview.setting")) { return; }
+            const config = vscode.workspace.getConfiguration("fontforge-glyph-preview.preview");
+            this.settings = {
+                ...this.settings,
+                glyphSelectionMode: config.get<string>("setting.glyphSelectionMode", "table"),
+            };
+            writeDebugLog(`Updated settings=${JSON.stringify(this.settings)}.`);
+            if (!this.panel) { return; }
+            postMessage(this.panel, "updateSettings", this.settings);
+        }));
 
         // WebView のコンテンツを設定する。
         panel.webview.html = this.initializeHtmlContent(panel);
@@ -244,6 +252,7 @@ export class PreviewPanel {
                 (uri, timing) => this.onDidSfdirSubFileChanged(uri, timing),
             );
         }
+        this.panel.title = this.document.name;
         if (this.document.isSfdir) {
             // SFD ディレクトリの場合は時間がかかるのでローディングを表示する。
             postMessage(this.panel, "loading", {});

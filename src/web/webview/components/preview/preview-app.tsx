@@ -104,6 +104,9 @@ export function PreviewApp() {
                         if (!gid) { return; }
                         await showGlyphDataAsync(name, gid);
                     } else if (glyphNameToEncodingList.length > 0) {
+                        if (settings.glyphSelectionMode === "table") {
+                            setIsGlyphSelectorOpen(true);
+                        }
                         const [name, {gid}] = glyphNameToEncodingList[0];
                         await showGlyphDataAsync(name, gid);
                     }
@@ -127,7 +130,7 @@ export function PreviewApp() {
                 break;
             case "updateSettings":
                 {
-                    writeDebugLog(vscode, `Recieve updateSettings settings=${JSON.stringify(event.data.param)}.`);
+                    writeDebugLog(vscode, `Recieve updateSettings settings=${JSON.stringify(event.data.params)}.`);
                     setSettings(event.data.params);
                 }
                 break;
@@ -156,15 +159,19 @@ export function PreviewApp() {
         };
     }, []);
 
+    const hasMultipleGlyphs = nameToEncodingList.length >= 2;
+
     return (
         <GlyphStoreProvider glyphStore={glyphStore}>
             <div className="preview-body">
                 <header className="header">
-                    <div className="file-name-container"><span>{fileName}</span></div>
                     <div className="menu-container">
                         <div className="glyph-name-container">
-                            <button type="button" className="open-side-menu-button" disabled={nameToEncodingList.length <= 1} onClick={_ => handleToggleGlyphSelectorOpen()}>&gt;</button>
-                            <span className="glyph-name-title">Glyph Name: </span><span className="glyph-name">{glyphName}</span>
+                            <span className="file-name">{fileName}</span><span> &gt; </span>
+                            <span
+                                className={`glyph-name${(hasMultipleGlyphs) ? " _has-multiple-glyphs" : " _has-single-glyph"}${(isGlyphSelectorOpen) ? " _is-selecting" : ""}`}
+                                onClick={_ => hasMultipleGlyphs && handleToggleGlyphSelectorOpen()}
+                            >{glyphName}</span>
                         </div>
                         <div className="sub-menu-container">
                             <span className="menu-item"><label>View</label>
@@ -187,8 +194,8 @@ export function PreviewApp() {
                         </div>
                     </div>
                 </header>
-                {/* <GlyphList nameToEncodingList={nameToEncodingList} open={isGlyphSelectorOpen} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} /> */}
-                {isGlyphSelectorOpen && <GLyphTable nameToEncodingList={nameToEncodingList} displayType={settings.displayType} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />}
+                {(settings.glyphSelectionMode === "table" && hasMultipleGlyphs && isGlyphSelectorOpen) && <GLyphTable nameToEncodingList={nameToEncodingList} displayType={settings.displayType} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />}
+                {(settings.glyphSelectionMode === "list" && hasMultipleGlyphs && isGlyphSelectorOpen) && <GlyphList nameToEncodingList={nameToEncodingList} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />}
                 <GlyphOutline glyphData={glyphData} settings={settings}></GlyphOutline>
                 {isLoading && <Loading />}
             </div>

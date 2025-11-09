@@ -3,13 +3,11 @@ import { GlyphEncoding } from "../../libs/sfd";
 
 type Props = {
     nameToEncodingList: [name: string, encoding: GlyphEncoding][];
-    open: boolean;
     onClose: () => void;
     onItemSelected: (name: string, gid: number) => void;
 };
 export default function GLyphList({
     nameToEncodingList,
-    open,
     onClose,
     onItemSelected: onItemClick,
 
@@ -21,7 +19,7 @@ export default function GLyphList({
     }, [onClose, onItemClick]);
     
     return (
-        <aside className={"side-menu " + ((open && (nameToEncodingList.length >= 2)) ? "" : "_closed")}>
+        <aside className="side-menu">
             <div className="glyph-list-container">
                 <ul>
                     {nameToEncodingList.map(([name, {gid}]) => {
