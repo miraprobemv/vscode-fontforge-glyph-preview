@@ -2,16 +2,28 @@ import React from "react";
 import { PreviewSettings } from "../../common/types";
 
 
-type PreviewSettingsContextType = { previewSettings: PreviewSettings; setPreviewSettings: React.Dispatch<React.SetStateAction<PreviewSettings>> };
+type PreviewSettingsContextType = {
+    previewSettings: PreviewSettings;
+    setPreviewSettings: React.Dispatch<React.SetStateAction<PreviewSettings>>
+};
+
 const initialState: PreviewSettings = {
     displayType: "metrics",
     showsCurvatureCombs: false,
 };
-const PreviewSettingsContext = React.createContext<PreviewSettingsContextType>({ previewSettings: initialState, setPreviewSettings: () => {} });
+
+const PreviewSettingsContext = React.createContext<PreviewSettingsContextType>({
+    previewSettings: initialState,
+    setPreviewSettings: () => {},
+});
 
 export function PreviewSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [previewSettings, setPreviewSettings] = React.useState<PreviewSettings>(initialState);
-  return <PreviewSettingsContext.Provider value={{ previewSettings, setPreviewSettings }}>{children}</PreviewSettingsContext.Provider>;
+    const [previewSettings, setPreviewSettings] = React.useState<PreviewSettings>(initialState);
+    return (
+        <PreviewSettingsContext.Provider value={{ previewSettings, setPreviewSettings }}>
+            {children}
+        </PreviewSettingsContext.Provider>
+    );
 }
 
 export function usePreviewSettings(): PreviewSettingsContextType {

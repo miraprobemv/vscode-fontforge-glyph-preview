@@ -5,8 +5,7 @@ import SvgGlyphHandle from "./svg-glyph-handle";
 import SvgGlyphPoint from "./svg-glyph-point";
 import SvgGlyphRefer from "./svg-glyph-refer";
 import SvgGlyphCurvatureComb from "./svg-glyph-curvature-comb";
-import { calcCurvatureCombs, calcHandles, GlyphData } from "../../libs/glyph";
-import { estimateViewBox, estimateReferViewBox, mergeViewBox, addMargineToViewBox } from "../../libs/glyph";
+import { addMargineToViewBox, calcCurvatureCombs, calcHandles, estimateViewBox, GlyphData } from "../../libs/glyph";
 import { PreviewSettings } from "../../../common/types";
 
 
@@ -20,12 +19,7 @@ export default function GlyphOutline({
 }: Props) {
     
     const viewBox = useMemo(() => {
-        let viewBox = estimateViewBox(glyphData.width, glyphData.paths);
-        if (glyphData.refers.length > 0) {
-            const referViewBox = estimateReferViewBox(glyphData.refers);
-            viewBox = mergeViewBox(viewBox, referViewBox);
-        }
-        viewBox = addMargineToViewBox(viewBox, 0.2);
+        const viewBox = addMargineToViewBox(estimateViewBox(glyphData), 0.2);
         return viewBox;
     }, [glyphData]);
 

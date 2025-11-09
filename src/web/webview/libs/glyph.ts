@@ -53,8 +53,16 @@ export type Comb = {
     end: Point;
 };
 
+export function estimateViewBox(glyphData: GlyphData): ViewBox {
+    let viewBox = estimatePathViewBox(glyphData.width, glyphData.paths);
+    if (glyphData.refers.length > 0) {
+        const referViewBox = estimateReferViewBox(glyphData.refers);
+        viewBox = mergeViewBox(viewBox, referViewBox);
+    }
+    return viewBox;
+}
 
-export function estimateViewBox(fontWidth: number, glyphPaths: PathOperation[]): ViewBox {
+function estimatePathViewBox(fontWidth: number, glyphPaths: PathOperation[]): ViewBox {
     let [minX, minY, maxX, maxY] = [0, 0, fontWidth, 0]; // Include matric origin and font width in the viewBox
     for (const op of glyphPaths) {
         [minX, maxX] = expandRange(op.point.x, minX, maxX);
@@ -69,11 +77,11 @@ export function estimateViewBox(fontWidth: number, glyphPaths: PathOperation[]):
     return [minX, minY, maxX - minX, maxY - minY];
 }
 
-export function estimateReferViewBox(
+function estimateReferViewBox(
     refers: GlyphRefer[]): ViewBox {
-    let viewBox: ViewBox = [Infinity, Infinity, -Infinity, -Infinity];
+    let viewBox: ViewBox = [0, 0, 0, 0];
     for (const refer of refers) {
-        let subViewBox: ViewBox = [Infinity, Infinity, -Infinity, -Infinity];
+        let subViewBox: ViewBox = [0, 0, 0, 0];
         if (refer.refers.length === 0 && refer.glyphPaths.length === 0) { continue; }
 
         if (refer.refers.length > 0) {
@@ -81,7 +89,7 @@ export function estimateReferViewBox(
             subViewBox = mergeViewBox(subViewBox, referViewBox);
         }
         if (refer.glyphPaths.length > 0) {
-            const referViewBox = estimateViewBox(0, refer.glyphPaths);
+            const referViewBox = estimatePathViewBox(0, refer.glyphPaths);
             subViewBox = mergeViewBox(subViewBox, referViewBox);
         }
         viewBox = mergeViewBox(
@@ -92,7 +100,7 @@ export function estimateReferViewBox(
     return viewBox;
 }
 
-function affineTransformViewBox(
+export function affineTransformViewBox(
     viewBox: ViewBox,
     affineParam: AffineParam
 ): ViewBox {
@@ -112,13 +120,21 @@ function affineTransformViewBox(
 
 export function mergeViewBox(viewBox1: ViewBox, viewBox2: ViewBox): ViewBox {
     const [minX1, minY1, width1, height1] = viewBox1;
+    const maxX1 = minX1 + width1;
+    const maxY1 = minY1 + height1;
 
     const [minX2, minY2, width2, height2] = viewBox2;
+    const maxX2 = minX2 + width2;
+    const maxY2 = minY2 + height2;
+
 
     const minX = Math.min(minX1, minX2);
     const minY = Math.min(minY1, minY2);
-    const width = Math.max(width1, width2);
-    const height = Math.max(height1, height2);
+    const maxX = Math.max(maxX1, maxX2);
+    const maxY = Math.max(maxY1, maxY2);
+
+    const width = maxX - minX;
+    const height = maxY - minY;
 
     return [minX, minY, width, height];
 }

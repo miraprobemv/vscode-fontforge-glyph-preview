@@ -1,18 +1,33 @@
 import React, { useState, useEffect, useEffectEvent } from "react";
 import GlyphOutline from "../glyph/glyph-outline";
 import GlyphList from "../ui/glyph-list";
-import { useGlyphStore } from "../../hooks/glyph-store";
+import { GlyphStoreProvider } from "../../hooks/glyph-store";
 import { useVscodeApi } from "../../hooks/vscode-api";
 import { GlyphData } from "../../libs/glyph";
 import { postMessage, sendMessageAsync, writeDebugLog } from "../../libs/interop";
-import { extractEncoding, extractGid, extractGlyphName, GlyphEncoding } from "../../libs/sfd";
+import { extractEncoding, extractGlyphName, GlyphEncoding } from "../../libs/sfd";
 import { usePreviewSettings } from "../../hooks/preview-settings";
 import { Loading } from "../ui/loading";
+import GLyphTable from "../ui/glyph-table";
+import { GlyphStore } from "../../libs/glyph-store";
 
 export function PreviewApp() {
     const vscode = useVscodeApi();
-    const glyphStore = useGlyphStore();
     const { previewSettings: settings, setPreviewSettings: setSettings } = usePreviewSettings();
+
+    const glyphStoreRef = React.useRef<GlyphStore | null>(null);
+    if (!glyphStoreRef.current) {
+        const getAdditionalGlyphDataStringAsync = async function (gid: number): Promise<string[]> {
+            const glyphData: string[] = await sendMessageAsync(
+                vscode,
+                "fetchGlyphDataFromOtherFile",
+                { gid: gid }
+            );
+            return glyphData;
+        };
+        glyphStoreRef.current = new GlyphStore(getAdditionalGlyphDataStringAsync);
+    }
+    const glyphStore = glyphStoreRef.current;
 
     const [nameToEncodingList, setNameToEncodingList] = useState<[name: string, encoding: GlyphEncoding][]>([]);
     const [isGlyphSelectorOpen, setIsGlyphSelectorOpen] = useState(false);
@@ -62,27 +77,7 @@ export function PreviewApp() {
 
     const showGlyphDataAsync = async (name: string, gid: number) => {
         setGlyphName(name);
-        setGlyphData((await glyphStore.getGlyphDataAsync(gid, getReferGlyphDataStringAsync)) ?? defaultGlyphData);
-    };
-
-    const getReferGlyphDataStringAsync = async function (gid: number) {
-        if (!glyphStore.has(gid)) {
-            try {
-                const glyphData: string[] = await sendMessageAsync(
-                    vscode,
-                    "fetchGlyphDataFromOtherFile",
-                    { gid: gid }
-                );
-                const glyphName = extractGlyphName(glyphData);
-                const glyphEncoding = extractEncoding(glyphData);
-                glyphStore.addGlyph(gid, glyphName, glyphEncoding, glyphData);
-                return glyphData;
-            } catch (error) {
-                glyphStore.addGlyph(gid, undefined, undefined, undefined);
-                return undefined;
-            }
-        }
-        return glyphStore.getGlyphDataString(gid);
+        setGlyphData((await glyphStore.getGlyphDataAsync(gid)) ?? defaultGlyphData);
     };
 
     // メッセージ受信
@@ -153,42 +148,50 @@ export function PreviewApp() {
         return () => {
             window.removeEventListener("message", eventHandler);
             writeDebugLog(vscode, "Event listener was removed.");
+            try {
+                glyphStoreRef.current?.dispose();
+            } finally {
+                glyphStoreRef.current = null;
+            }
         };
     }, []);
 
     return (
-        <div className="preview-body">
-            <header className="header">
-                <div className="file-name-container"><span>{fileName}</span></div>
-                <div className="menu-container">
-                    <div className="glyph-name-container">
-                        <button type="button" className="open-side-menu-button" disabled={nameToEncodingList.length <= 1} onClick={_ => handleToggleGlyphSelectorOpen()}>&gt;</button>
-                        <span className="glyph-name-title">Glyph Name: </span><span className="glyph-name">{glyphName}</span>
+        <GlyphStoreProvider glyphStore={glyphStore}>
+            <div className="preview-body">
+                <header className="header">
+                    <div className="file-name-container"><span>{fileName}</span></div>
+                    <div className="menu-container">
+                        <div className="glyph-name-container">
+                            <button type="button" className="open-side-menu-button" disabled={nameToEncodingList.length <= 1} onClick={_ => handleToggleGlyphSelectorOpen()}>&gt;</button>
+                            <span className="glyph-name-title">Glyph Name: </span><span className="glyph-name">{glyphName}</span>
+                        </div>
+                        <div className="sub-menu-container">
+                            <span className="menu-item"><label>View</label>
+                                <aside className="menu-dropdown">
+                                    <ul>
+                                        <li>
+                                            <label><input type="radio" name="displayType" value="metrics" checked={settings.displayType === "metrics"} onChange={e => handleDisplayTypeChanged(e.target.value)}/>Metrics</label>
+                                            <ul>
+                                                <li>
+                                                    <label><input type="checkbox" checked={settings.showsCurvatureCombs} onChange={e => handleShowCurvatureCombsChanged(e.target.checked)} disabled={settings.displayType !== "metrics"} />Curvature combs</label>
+                                                </li>
+                                            </ul>
+                                        </li>
+                                        <li>
+                                            <label><input type="radio" name="displayType" value="preview" checked={settings.displayType === "preview"} onChange={e => handleDisplayTypeChanged(e.target.value)}/>Preview</label>
+                                        </li>
+                                    </ul>
+                                </aside>
+                            </span>
+                        </div>
                     </div>
-                    <div className="sub-menu-container">
-                        <span className="menu-item"><label>View</label>
-                            <aside className="menu-dropdown">
-                                <ul>
-                                    <li>
-                                        <label><input type="radio" name="displayType" value="metrics" checked={settings.displayType === "metrics"} onChange={e => handleDisplayTypeChanged(e.target.value)}/>Metrics</label>
-                                        <ul>
-                                            <li>
-                                                <label><input type="checkbox" checked={settings.showsCurvatureCombs} onChange={e => handleShowCurvatureCombsChanged(e.target.checked)} disabled={settings.displayType !== "metrics"} />Curvature combs</label>
-                                            </li>
-                                        </ul>
-                                    </li>
-                                    <li>
-                                        <label><input type="radio" name="displayType" value="preview" checked={settings.displayType === "preview"} onChange={e => handleDisplayTypeChanged(e.target.value)}/>Preview</label>
-                                    </li>
-                                </ul>
-                            </aside>
-                        </span>
-                    </div>
-                </div>
-            </header>
-            <GlyphList nameToEncodingList={nameToEncodingList} open={isGlyphSelectorOpen} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />
-            <GlyphOutline glyphData={glyphData} settings={settings}></GlyphOutline>
-            {isLoading && <Loading />}
-        </div>
+                </header>
+                {/* <GlyphList nameToEncodingList={nameToEncodingList} open={isGlyphSelectorOpen} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} /> */}
+                {isGlyphSelectorOpen && <GLyphTable nameToEncodingList={nameToEncodingList} displayType={settings.displayType} onClose={handleGlyphSelectorClose} onItemSelected={handleGlyphSelected} />}
+                <GlyphOutline glyphData={glyphData} settings={settings}></GlyphOutline>
+                {isLoading && <Loading />}
+            </div>
+        </GlyphStoreProvider>
     );
 }

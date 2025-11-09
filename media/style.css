@@ -4,24 +4,35 @@
 
 /* fallback */
 :root {
+    --default-font-size: var(--vscode-font-size, 14px);
+    --default-line-height: calc(var(--default-font-size) * 1.5);
+
     --ui-background-color: var(--vscode-editorStickyScroll-background, #fefefe);
     --ui-foreground-color: var(--vscode-foreground, #333333);
+    --ui-shadow-color: var(--vscode-sideBar-shadow, #00000033);
+    --ui-table-border-color: var(--vscode-chart-axis, #11111166);
+    --ui-table-invalid-cell-color: color-mix(in srgb, var(--vscode-chart-axis, #11111166) 35%, transparent);
+
+    --foreground-color: var(--vscode-editor-foreground, #111111);
+    --background-color: var(--vscode-editor-background, #fafafa);
+
     --axis-color: var(--vscode-chart-axis, #11111166);
     --font-width-line-color: var(--vscode-chart-axis, #11111166);
-    --background-color: var(--vscode-editor-background, #fafafa);
-    --foreground-color: var(--vscode-editor-foreground, #111111);
+
     --glyph-preview-color: var(--vscode-editor-foreground, #111111);
     --glyph-stroke-color: var(--vscode-editor-foreground, #111111);
     --glyph-fill-color: color-mix(in srgb, var(--vscode-editor-foreground, #111111) 20%, transparent);
-    --point-color: var(--vscode-debugTokenExpression-value, #111111aa);
-    --forward-handle-color: var(--vscode-debugTokenExpression-type, #336677);
-    --backward-handle-color: var(--vscode-debugTokenExpression-name, #773366);
+
+    --refer-glyph-preview-color: var(--vscode-textLink-foreground, #3388cc);
     --refer-glyph-stroke-color: var(--vscode-textLink-foreground, #3388cc);
     --refer-glyph-fill-color: color-mix(in srgb, var(--vscode-textLink-foreground, #3388cc) 20%, transparent);
+
+    --forward-handle-color: var(--vscode-debugTokenExpression-type, #336677);
+    --backward-handle-color: var(--vscode-debugTokenExpression-name, #773366);
+
+    --point-color: var(--vscode-debugTokenExpression-value, #111111aa);
+
     --curvature-comb-color: color-mix(in srgb, var(--vscode-debugTokenExpression-string, #885533) 25%, transparent);
-    --ui-shadow-color: var(--vscode-sideBar-shadow, #00000033);
-    --default-font-size: var(--vscode-font-size, 14px);
-    --default-line-height: calc(var(--default-font-size) * 1.5);
 }
 
 body {
@@ -40,7 +51,6 @@ header {
     height: calc(var(--default-line-height) * 2 + 10px);
     background-color: var(--ui-background-color);
     color: var(--ui-foreground-color);
-    box-sizing: border-box;
     padding: 0 10px;
     box-shadow: 2px 0 5px var(--ui-shadow-color);
     z-index: 1000;
@@ -91,7 +101,6 @@ header {
 
 .side-menu .glyph-list-container {
     padding: 10px;
-    box-sizing: border-box;
 }
 
 .side-menu .glyph-list-container ul {
@@ -107,6 +116,67 @@ header {
     background-color: var(--ui-foreground-color);
     color: var(--ui-background-color);
 }
+
+
+.glyph-table-contailner {
+    position: fixed;
+    top: calc(var(--default-line-height) * 2 + 10px);
+    left: 0;
+    width: 100vw;
+    max-height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
+    box-shadow: 2px 0 5px var(--ui-shadow-color);
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.glyph-table {
+    padding: 10px;
+    border-collapse: collapse;
+}
+
+.glyph-table thead th {
+    background-color: var(--ui-background-color);
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.glyph-table--row--header {
+    width: 12ex;
+    padding-right: 1ex;
+    text-align: right;
+    vertical-align: middle;
+}
+
+.glyph-table--cell {
+    width: calc((100vw - 12ex - 16px - 10px * 2) / 16);
+    max-width: calc((100vw - 12ex - 16px - 10px * 2) / 16);
+    aspect-ratio: 1 / 1;
+    border: 1px solid var(--ui-table-border-color);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.glyph-table--cell .glyph-table--cell--name {
+    cursor: pointer;
+}
+
+.glyph-table--cell._no-glyph-data {
+    background-color:  var(--ui-table-invalid-cell-color);
+    cursor: default;
+}
+
+.glyph-table--cell._no-glyph-data .glyph-table--cell--name {
+    cursor: default;
+}
+
+.glyph-table--row._gap .glyph-table--cell._no-glyph-data {
+    background-color: var(--ui-table-border-color);
+}
+
 .menu-item {
     position: relative;
     margin: auto 1em;
@@ -126,6 +196,7 @@ header {
     color: var(--ui-foreground-color);
     box-shadow: 2px 0 5px var(--ui-shadow-color);
     transform: translate(0, 100%);
+    z-index: 1001;
 }
 
 .menu-dropdown ul {
@@ -148,11 +219,21 @@ header {
     display: block;
 }
 
+.glyph-image.glyph-outline {
+    width: 100vw;
+    height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
+}
+
+.glyph-image.glyph-preview {
+    width: 100%;
+    height: 100%;
+}
+
 .glyph-image .glyph-svg {
     vertical-align: top;
     object-fit: contain;
-    width: 100vw;
-    height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
+    width: 100%;
+    height: 100%;
 }
 
 .glyph-image .axis {
@@ -163,6 +244,10 @@ header {
 }
 .glyph-image .glyph-preview {
     fill: var(--glyph-preview-color);
+    stroke: transparent;
+}
+.glyph-image .refer-glyph-preview {
+    fill: var(--refer-glyph-preview-color);
     stroke: transparent;
 }
 .glyph-image .glyph-path {

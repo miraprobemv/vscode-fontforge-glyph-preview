@@ -1,15 +1,17 @@
-import { extractFontWidth, extractLayerData, parseReferDataAsync, parseSplineSet, GlyphDataStringFetcher, GlyphEncoding } from "./sfd";
+import { extractFontWidth, extractLayerData, parseReferDataAsync, parseSplineSet, GlyphDataStringFetcher, GlyphEncoding, extractGlyphName, extractEncoding } from "./sfd";
 import { GlyphData } from "./glyph";
 
 export class GlyphStore {
     glyphs: Map<number, string[] | undefined>;
     glyphCache: Map<number, GlyphData>;
     nameToEncoding: Map<string, GlyphEncoding>;
+    getAdditionalGlyphDataStringAsync: (gid: number) => Promise<string[]>;
 
-    constructor() {
+    constructor(getAdditionalGlyphDataStringAsync: (gid: number) => Promise<string[]>) {
         this.glyphs = new Map();
         this.nameToEncoding = new Map();
         this.glyphCache = new Map();
+        this.getAdditionalGlyphDataStringAsync = getAdditionalGlyphDataStringAsync;
     }
 
     parseAllGlyphs(sfdData: string[]) {
@@ -77,8 +79,25 @@ export class GlyphStore {
         return this.glyphs.get(gid);
     }
 
-    async getGlyphDataAsync(gid: number, getGlyphDataStringAsync: GlyphDataStringFetcher): Promise<GlyphData | undefined> {
-        
+    async getGlyphDataAsync(gid: number): Promise<GlyphData | undefined> {
+
+        const this_ = this;
+        const getGlyphDataStringAsync = async function (gid: number) {
+            if (!this_.has(gid)) {
+                try {
+                    const glyphData = await this_.getAdditionalGlyphDataStringAsync(gid);
+                    const glyphName = extractGlyphName(glyphData);
+                    const glyphEncoding = extractEncoding(glyphData);
+                    this_.addGlyph(gid, glyphName, glyphEncoding, glyphData);
+                    return glyphData;
+                } catch (error) {
+                    this_.addGlyph(gid, undefined, undefined, undefined);
+                    return undefined;
+                }
+            }
+            return this_.getGlyphDataString(gid);
+        };
+
         const glyphData = await getGlyphDataStringAsync(gid);
         if (!glyphData) { return; }
 
