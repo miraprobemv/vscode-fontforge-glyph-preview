@@ -92,7 +92,6 @@ export function PreviewApp() {
 
                     glyphStore.clear();
                     glyphStore.parseAllGlyphs(params.fontData);
-                    writeDebugLog(vscode, "Update Glyph Store at " + params.timing + ".");
 
                     const glyphNameToEncodingList = glyphStore.getAllGlyphNameToEncodingList();
                     setNameToEncodingList(glyphNameToEncodingList);
@@ -101,14 +100,18 @@ export function PreviewApp() {
                     if (params.startupGlyph) {
                         const name = params.startupGlyph;
                         const gid = glyphStore.getGlyphGid(name);
-                        if (!gid) { return; }
+                        writeDebugLog(vscode, `Show startup glyph: ${name}(gid: ${gid})`);
+                        if (gid === undefined) { return; }
                         await showGlyphDataAsync(name, gid);
                     } else if (glyphNameToEncodingList.length > 0) {
                         if (settings.glyphSelectionMode === "table") {
                             setIsGlyphSelectorOpen(true);
                         }
                         const [name, {gid}] = glyphNameToEncodingList[0];
+                        writeDebugLog(vscode, `Show default glyph: ${name}(gid: ${gid})`);
                         await showGlyphDataAsync(name, gid);
+                    } else {
+                        writeDebugLog(vscode, "Glyph for displaying is not found...");
                     }
                 }
                 break;

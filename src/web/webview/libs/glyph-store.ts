@@ -59,7 +59,7 @@ export class GlyphStore {
         glyphData: string[] | undefined,
     ) {
         this.glyphs.set(gid, glyphData);
-        if (name && encoding) {
+        if (name && (encoding !== undefined)) {
             this.nameToEncoding.set(name, encoding);
         }
         if (this.glyphCache.has(gid)) {
