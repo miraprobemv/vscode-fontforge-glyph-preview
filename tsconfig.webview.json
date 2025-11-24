@@ -1,6 +1,6 @@
 {
 	"extends": "./tsconfig.base.json",
-	"include": ["src/web/webview/**/*"],
+	"include": ["src/web/webview/**/*", "src/web/common/**/*"],
 	"compilerOptions": {
 		"lib": [
 			"ES2020",
