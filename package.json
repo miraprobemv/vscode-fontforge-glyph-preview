@@ -120,6 +120,11 @@
           ],
           "description": "Configure how glyphs are displayed when the preview is initially shown."
         },
+        "fontforge-glyph-preview.preview.default.view.anchorPoints": {
+          "type": "boolean",
+          "default": "false",
+          "description": "Display anchor points when the preview is initially shown."
+        },
         "fontforge-glyph-preview.preview.default.view.curvatureCombs": {
           "type": "boolean",
           "default": "false",
