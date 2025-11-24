@@ -1,4 +1,4 @@
-import { extractFontWidth, extractLayerData, parseReferDataAsync, parseSplineSet, GlyphDataStringFetcher, GlyphEncoding, extractGlyphName, extractEncoding } from "./sfd";
+import { extractFontWidth as extractGlyphWidth, extractLayerData, parseReferDataAsync, parseSplineSet, GlyphDataStringFetcher, GlyphEncoding, extractGlyphName, extractEncoding, extractAnchorPoints } from "./sfd";
 import { GlyphData } from "./glyph";
 
 export class GlyphStore {
@@ -101,15 +101,17 @@ export class GlyphStore {
         const glyphData = await getGlyphDataStringAsync(gid);
         if (!glyphData) { return; }
 
-        const fontWidth = extractFontWidth(glyphData);
+        const glyphWidth = extractGlyphWidth(glyphData);
+        const anchorPoints = extractAnchorPoints(glyphData);
         const { splineSet, refers } = extractLayerData("Fore", glyphData);
 
         const glyphPaths = parseSplineSet(splineSet);
         const glyphRefers = await parseReferDataAsync(refers, getGlyphDataStringAsync);
         return {
-            width: fontWidth,
+            width: glyphWidth,
             paths: glyphPaths,
             refers: glyphRefers,
+            anchorPoints: anchorPoints,
         };
     }
 

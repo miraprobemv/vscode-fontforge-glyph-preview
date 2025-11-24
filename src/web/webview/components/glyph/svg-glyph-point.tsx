@@ -12,7 +12,7 @@ export default function SvgGlyphPoint({
 }: Props) {
 
     return (
-        <g className="glyph-handle">
+        <g className="glyph-point-group">
             {points.map((pathPoint, idx) => {
                 const { point, pointType, start } = pathPoint;
                 const sizeBase = MARKER_SIZE * scale * (start ? 1.75 : 1.0);

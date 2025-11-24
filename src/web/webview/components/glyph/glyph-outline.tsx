@@ -5,8 +5,9 @@ import SvgGlyphHandle from "./svg-glyph-handle";
 import SvgGlyphPoint from "./svg-glyph-point";
 import SvgGlyphRefer from "./svg-glyph-refer";
 import SvgGlyphCurvatureComb from "./svg-glyph-curvature-comb";
-import { addMargineToViewBox, calcCurvatureCombs, calcHandles, estimateViewBox, GlyphData } from "../../libs/glyph";
+import { addMargineToViewBox, calcCurvatureCombParts, calcHandles, estimateViewBox, GlyphData } from "../../libs/glyph";
 import { PreviewSettings } from "../../../common/types";
+import SvgGlyphAnchorPoint from "./svg-glyph-anchor-point";
 
 
 type Props = {
@@ -71,10 +72,11 @@ export default function GlyphOutline({
                     {glyphData.refers.map((refer, idx) => {
                         return (<SvgGlyphRefer key={idx} refer={refer} scale={scale} className={(settings.displayType === "metrics") ? "refer-glyph-path" : "glyph-preview"} />);
                     })}
-                    {(settings.displayType === "metrics" && settings.showsCurvatureCombs) && <SvgGlyphCurvatureComb combs={calcCurvatureCombs(glyphData.paths, scale)} scale={scale} />}
+                    {(settings.displayType === "metrics" && settings.showsCurvatureCombs) && <SvgGlyphCurvatureComb combParts={calcCurvatureCombParts(glyphData.paths, scale)} scale={scale} />}
                     <SvgGlyphPath paths={glyphData.paths} scale={scale} className={(settings.displayType === "metrics") ? "glyph-path" : "glyph-preview"} />
                     {settings.displayType === "metrics" && <SvgGlyphHandle handles={calcHandles(glyphData.paths)} scale={scale} />}
                     {settings.displayType === "metrics" && <SvgGlyphPoint points={glyphData.paths.filter(x => x.type !== "M")} scale={scale} />}
+                    {(settings.displayType === "metrics" && settings.showsAnchorPoints) && <SvgGlyphAnchorPoint anchorPoints={glyphData.anchorPoints} scale={scale} />}
                 </g>
             </svg>
         </div>

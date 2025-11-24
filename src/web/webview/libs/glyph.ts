@@ -24,6 +24,11 @@ export type PathCurveTo = {
 };
 export type PathOperation = PathMoveTo | PathLineTo | PathCurveTo;
 
+export type AnchorPoint = {
+    name: string;
+    point: Point;
+}
+
 export type GlyphRefer = {
     affineParam: AffineParam;
     glyphPaths: PathOperation[];
@@ -34,6 +39,7 @@ export type GlyphData = {
     width: number;
     paths: PathOperation[];
     refers: GlyphRefer[];
+    anchorPoints: AnchorPoint[];
 };
 
 export type PathPoint = {
@@ -52,6 +58,12 @@ export type Comb = {
     root: Point;
     end: Point;
 };
+
+export type CombPart = {
+    start: Point;
+    curve: PathCurveTo;
+    combs: Comb[];
+}
 
 export function estimateViewBox(glyphData: GlyphData): ViewBox {
     let viewBox = estimatePathViewBox(glyphData.width, glyphData.paths);
@@ -179,17 +191,17 @@ export function calcHandles(
 }
 
 
-export function calcCurvatureCombs(glyphPaths: PathOperation[], scale: number): Comb[] {
+export function calcCurvatureCombParts(glyphPaths: PathOperation[], scale: number): CombPart[] {
     if (glyphPaths.length === 0) { return []; }
     let latest: Point = glyphPaths[0].point;
-    const combs: Comb[] = [];
+    const combParts: CombPart[] = [];
     for (const op of glyphPaths) {
         if (op.type !== "C") {
             latest = op.point;
             continue;
         }
-        // 櫛の歯の分割数を計算。1pxにつき1本出るようにしたい。
-        let div = 2;
+        // 櫛の分割は固定にする。面にするのであまり気にならないはず。   
+        let div = 64;
         while (true) {
             const testP = bezirPoint([latest, ...op.controlPoints, op.point], 1 / div);
             const testD2 = Math.pow(testP.x - latest.x, 2) + Math.pow(testP.y - latest.y, 2);
@@ -206,10 +218,9 @@ export function calcCurvatureCombs(glyphPaths: PathOperation[], scale: number): 
         for (let i = 0; i <= div; i++) {
             p.push(bezirPoint([latest, ...op.controlPoints, op.point], i / div));
         }
-        // 曲線の端の部分の計算用（終了）。ただし曲線が連続する場合は接続部分が重複するため省く
-        if (op.pointType === "corner" || op.pointType === "tangent") {
+        // 曲線の端の部分の計算用（終了）。
             p.push(bezirPoint([latest, ...op.controlPoints, op.point], (div * 2 - 1) / (div * 2)));
-        }
+        const combs: Comb[] = [];
         for (let i = 1; i < p.length - 1; i++) {
             const c = getCircleBy3Points([p[i - 1], p[i], p[i + 1]]);
             if (c.r === 0) { continue; }
@@ -220,7 +231,12 @@ export function calcCurvatureCombs(glyphPaths: PathOperation[], scale: number): 
             };
             combs.push(comb);
         }
+        combParts.push({
+            start: latest,
+            curve: op,
+            combs: combs,
+        });
         latest = op.point;
     }
-    return combs;
+    return combParts;
 }

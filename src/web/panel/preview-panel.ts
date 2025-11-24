@@ -40,6 +40,7 @@ export class PreviewPanel {
             ...this.settings,
             glyphSelectionMode: config.get<string>("setting.glyphSelectionMode", "table"),
             displayType: config.get<string>("default.view.displayType", "metrics"),
+            showsAnchorPoints: config.get<boolean>("default.view.anchorPoints", false),
             showsCurvatureCombs: config.get<boolean>("default.view.curvatureCombs", false),
         };
         return settings;

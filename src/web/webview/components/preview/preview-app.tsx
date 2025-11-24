@@ -35,7 +35,7 @@ export function PreviewApp() {
     const [fileName, setFileName] = useState("");
     const [glyphName, setGlyphName] = useState("");
 
-    const defaultGlyphData = { width: 0, paths: [], refers: [] };
+    const defaultGlyphData = { width: 0, paths: [], refers: [], anchorPoints: [] };
     const [glyphData, setGlyphData] = useState<GlyphData>(defaultGlyphData);
     
     const [isLoading, setIsLoading] = useState(false);
@@ -45,6 +45,17 @@ export function PreviewApp() {
             const newState = {
                 ...state,
                 displayType: type,
+            }
+            postMessage(vscode, "updateSettings", newState);
+            return newState;
+        })
+    };
+
+    const handleShowAnchorPointsChanged = (shows: boolean) => {
+        setSettings(state => {
+            const newState = {
+                ...state,
+                showsAnchorPoints: shows,
             }
             postMessage(vscode, "updateSettings", newState);
             return newState;
@@ -183,6 +194,9 @@ export function PreviewApp() {
                                         <li>
                                             <label><input type="radio" name="displayType" value="metrics" checked={settings.displayType === "metrics"} onChange={e => handleDisplayTypeChanged(e.target.value)}/>Metrics</label>
                                             <ul>
+                                                <li>
+                                                    <label><input type="checkbox" checked={settings.showsAnchorPoints} onChange={e => handleShowAnchorPointsChanged(e.target.checked)} disabled={settings.displayType !== "metrics"} />Anchor points</label>
+                                                </li>
                                                 <li>
                                                     <label><input type="checkbox" checked={settings.showsCurvatureCombs} onChange={e => handleShowCurvatureCombsChanged(e.target.checked)} disabled={settings.displayType !== "metrics"} />Curvature combs</label>
                                                 </li>

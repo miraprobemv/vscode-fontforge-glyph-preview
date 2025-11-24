@@ -27,6 +27,10 @@
     --refer-glyph-stroke-color: var(--vscode-textLink-foreground, #3388cc);
     --refer-glyph-fill-color: color-mix(in srgb, var(--vscode-textLink-foreground, #3388cc) 20%, transparent);
 
+    
+    --anchor-point-color: var(--vscode-debugTokenExpression-boolean, #3366cc);
+    --anchor-point-name-color: var(--vscode-debugTokenExpression-boolean, #3366cc);
+
     --forward-handle-color: var(--vscode-debugTokenExpression-type, #336677);
     --backward-handle-color: var(--vscode-debugTokenExpression-name, #773366);
 
@@ -264,7 +268,15 @@ header {
     stroke: var(--glyph-stroke-color);
 }
 .glyph-image .curvature-comb {
-    stroke: var(--curvature-comb-color);
+    fill: var(--curvature-comb-color);
+    stroke: none;
+}
+.glyph-image .anchor-point {
+    stroke: var(--anchor-point-color);
+    fill: color-mix(in srgb, var(--anchor-point-color) 50%, transparent);
+}
+.glyph-image .anchor-point-name {
+    fill: var(--anchor-point-name-color);
 }
 .glyph-image .glyph-path-interporation {
     fill: var(--glyph-fill-color);

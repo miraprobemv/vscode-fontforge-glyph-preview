@@ -1,4 +1,4 @@
-import { PathOperation, PointTypes, GlyphRefer } from "./glyph";
+import { PathOperation, PointTypes, AnchorPoint, GlyphRefer } from "./glyph";
 import { AffineParam } from "./metrics";
 
 export type GlyphDataStringFetcher = (gid: number) => Promise<string[] | undefined>;
@@ -55,6 +55,17 @@ export function extractFontWidth(lines: string[]): number {
         }
     }
     return 0; // Default value if not found
+}
+
+export function extractAnchorPoints(lines: string[]): AnchorPoint[] {
+    const anchorPoints: AnchorPoint[] = [];
+    for (const line of lines) {
+        if (line.startsWith("AnchorPoint:")) {
+            const [_, name, x, y, ...__] = line.split(" ");
+            anchorPoints.push({ name: name.slice(1, name.length - 1), point: { x: parseFloat(x), y: parseFloat(y) } });
+        }
+    }
+    return anchorPoints;
 }
 
 export function extractLayerData(section: string, lines: string[]): { splineSet: string[], refers: string[] } {

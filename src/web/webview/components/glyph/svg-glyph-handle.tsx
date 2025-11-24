@@ -13,7 +13,7 @@ export default function SvgGlyphHandle({
 }: Props) {
 
     return (
-        <g className="glyph-handle">
+        <g className="glyph-handle-group">
             {handles.map((pathHandle, idx) => {
                 const { root: { x: x1, y: y1 }, end: { x: x2, y: y2 }, forward } = pathHandle;
                 if (nearlyEqual(x1, x2) && nearlyEqual(y1, y2)) {
