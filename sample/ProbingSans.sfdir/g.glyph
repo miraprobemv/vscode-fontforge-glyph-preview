@@ -1,5 +1,6 @@
 StartChar: g
 Encoding: 103 103 18
+GlifName: g
 Width: 540
 Flags: W
 HStem: -182 74<165.235 370.059> 45 77<195.705 335.863> 53 77<203.822 402.18> 195 75<213.13 338.679> 435 75<179.984 348.554 424.18 476>
@@ -71,4 +72,5 @@ SplineSet
  47 -45 l 1
  58 16 85 52 134 117 c 1
 EndSplineSet
+Validated: 5
 EndChar
