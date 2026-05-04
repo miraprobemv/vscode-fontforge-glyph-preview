@@ -1,4 +1,4 @@
-import { VSCodeApi } from "./vscodeapi";
+import { VSCodeApi } from "../types/vscodeapi";
 
 export function postMessage(
     receiver: VSCodeApi,
@@ -45,4 +45,8 @@ export function sendMessageAsync(
             callbackId: callbackId,
         });
     });
+}
+
+export function writeDebugLog (receiver: VSCodeApi, message: string) {
+    postMessage(receiver, "writeDebugLog", { message });
 }

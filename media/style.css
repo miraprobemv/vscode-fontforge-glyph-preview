@@ -4,20 +4,39 @@
 
 /* fallback */
 :root {
-    --axis-color: var(--vscode-chart-axis, #11111166);
-    --font-width-line-color: var(--vscode-chart-axis, #11111166);
-    --background-color: var(--vscode-editor-background, #fafafa);
-    --foreground-color: var(--vscode-editor-foreground, #111111);
-    --glyph-stroke-color: var(--vscode-editor-foreground, #111111);
-    --glyph-fill-color: color-mix(in srgb, var(--vscode-editor-foreground, #111111) 20%, transparent);
-    --point-color: var(--vscode-debugTokenExpression-value, #111111aa);
-    --forward-handle-color: var(--vscode-debugTokenExpression-type, #336677);
-    --backward-handle-color: var(--vscode-debugTokenExpression-name, #773366);
-    --refer-glyph-stroke-color: var(--vscode-textLink-foreground, #3388cc);
-    --refer-glyph-fill-color: color-mix(in srgb, var(--vscode-textLink-foreground, #3388cc) 20%, transparent);
-    --ui-shadow-color: var(--vscode-sideBar-shadow, #00000033);
     --default-font-size: var(--vscode-font-size, 14px);
     --default-line-height: calc(var(--default-font-size) * 1.5);
+
+    --ui-background-color: var(--vscode-editorStickyScroll-background, #fefefe);
+    --ui-foreground-color: var(--vscode-foreground, #333333);
+    --ui-shadow-color: var(--vscode-sideBar-shadow, #00000033);
+    --ui-table-border-color: var(--vscode-chart-axis, #11111166);
+    --ui-table-invalid-cell-color: color-mix(in srgb, var(--vscode-chart-axis, #11111166) 35%, transparent);
+
+    --foreground-color: var(--vscode-editor-foreground, #111111);
+    --background-color: var(--vscode-editor-background, #fafafa);
+
+    --axis-color: var(--vscode-chart-axis, #11111166);
+    --font-width-line-color: var(--vscode-chart-axis, #11111166);
+
+    --glyph-preview-color: var(--vscode-editor-foreground, #111111);
+    --glyph-stroke-color: var(--vscode-editor-foreground, #111111);
+    --glyph-fill-color: color-mix(in srgb, var(--vscode-editor-foreground, #111111) 20%, transparent);
+
+    --refer-glyph-preview-color: var(--vscode-textLink-foreground, #3388cc);
+    --refer-glyph-stroke-color: var(--vscode-textLink-foreground, #3388cc);
+    --refer-glyph-fill-color: color-mix(in srgb, var(--vscode-textLink-foreground, #3388cc) 20%, transparent);
+
+    
+    --anchor-point-color: var(--vscode-debugTokenExpression-boolean, #3366cc);
+    --anchor-point-name-color: var(--vscode-debugTokenExpression-boolean, #3366cc);
+
+    --forward-handle-color: var(--vscode-debugTokenExpression-type, #336677);
+    --backward-handle-color: var(--vscode-debugTokenExpression-name, #773366);
+
+    --point-color: var(--vscode-debugTokenExpression-value, #111111aa);
+
+    --curvature-comb-color: color-mix(in srgb, var(--vscode-debugTokenExpression-string, #885533) 25%, transparent);
 }
 
 body {
@@ -33,44 +52,58 @@ body {
 
 header {
     width: 100%;
-    height: calc(var(--default-line-height) * 2 + 10px);
-    background-color: var(--background-color);
-    color: var(--foreground-color);
-    box-sizing: border-box;
-    padding: 0 10px;
+    height: calc(var(--default-line-height) + 4px);
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
+    padding: 2px 10px;
     box-shadow: 2px 0 5px var(--ui-shadow-color);
     z-index: 1000;
 }
 
-.file-name-container {
-    padding: 0 10px;
+.menu-container {
+    display: flex;
+    justify-content: space-between;
+}
+
+.glyph-name-container {
+    color: color-mix(in srgb, var(--foreground-color) 50%, transparent);
+}
+
+.file-name {
+    padding-left: 10px;
     font-weight: bold;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.open-side-menu-button {
-    background: none;
-    border: none;
-    color: var(--foreground-color);
+.glyph-name {
     cursor: pointer;
-    margin-left: 8px;
-    padding: 5px 10px;
+    margin-left: 2px;
 }
-.open-side-menu-button:disabled {
-    color: color-mix(in srgb, var(--foreground-color) 35%, transparent);
-    cursor: unset;
+.glyph-name._has-multiple-glyphs {
+    cursor: pointer;
+}
+.glyph-name._has-multiple-glyphs:hover {
+    color: var(--foreground-color);
+}
+.glyph-name._has-multiple-glyphs._is-selecting {
+    color: var(--foreground-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+.glyph-name._has-single-glyph {
+    cursor: default;
 }
 
 .side-menu {
     position: fixed;
-    top: calc(var(--default-line-height) * 2 + 10px);
+    top: calc(var(--default-line-height) + 4px);
     left: 0;
     width: 300px;
-    height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
-    background-color: var(--background-color);
-    color: var(--foreground-color);
+    height: calc(100dvh - calc(var(--default-line-height) + 4px));
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
     box-shadow: 2px 0 5px var(--ui-shadow-color);
     overflow-y: auto;
     z-index: 1000;
@@ -81,7 +114,6 @@ header {
 
 .side-menu .glyph-list-container {
     padding: 10px;
-    box-sizing: border-box;
 }
 
 .side-menu .glyph-list-container ul {
@@ -94,15 +126,127 @@ header {
     cursor: pointer;
 }
 .side-menu .glyph-list-container ul li:hover {
-    background-color: var(--foreground-color);
-    color: var(--background-color);
+    background-color: var(--ui-foreground-color);
+    color: var(--ui-background-color);
+}
+
+
+.glyph-table-contailner {
+    position: fixed;
+    top: calc(var(--default-line-height) + 4px);
+    left: 0;
+    width: 100vw;
+    max-height: calc(100dvh - calc(var(--default-line-height) + 4px));
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
+    box-shadow: 2px 0 5px var(--ui-shadow-color);
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.glyph-table {
+    padding: 10px;
+    border-collapse: collapse;
+}
+
+.glyph-table thead th {
+    background-color: var(--ui-background-color);
+    position: -webkit-sticky;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.glyph-table--row--header {
+    width: 12ex;
+    padding-right: 1ex;
+    text-align: right;
+    vertical-align: middle;
+}
+
+.glyph-table--cell {
+    width: calc((100vw - 12ex - 16px - 10px * 2) / 16);
+    max-width: calc((100vw - 12ex - 16px - 10px * 2) / 16);
+    aspect-ratio: 1 / 1;
+    border: 1px solid var(--ui-table-border-color);
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.glyph-table--cell .glyph-table--cell--name {
+    cursor: pointer;
+}
+
+.glyph-table--cell._no-glyph-data {
+    background-color:  var(--ui-table-invalid-cell-color);
+    cursor: default;
+}
+
+.glyph-table--cell._no-glyph-data .glyph-table--cell--name {
+    cursor: default;
+}
+
+.glyph-table--row._gap .glyph-table--cell._no-glyph-data {
+    background-color: var(--ui-table-border-color);
+}
+
+.menu-item {
+    position: relative;
+    margin: auto 1em;
+}
+.menu-item > label {
+    cursor: pointer;
+}
+
+.menu-dropdown {
+    position: absolute;
+    padding: 8px 0;
+    bottom: 0;
+    right: -4px;
+    display: none;
+    width: max-content;
+    background-color: var(--ui-background-color);
+    color: var(--ui-foreground-color);
+    box-shadow: 2px 0 5px var(--ui-shadow-color);
+    transform: translate(0, 100%);
+    z-index: 1001;
+}
+
+.menu-dropdown ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.menu-dropdown ul ul {
+    margin-left: 10px;
+}
+.menu-dropdown ul > li {
+    padding: 1px 12px 3px;
+}
+.menu-dropdown ul > li > label {
+    cursor: pointer;
+}
+
+.menu-item:hover > .menu-dropdown,
+.menu-item:focus-within > .menu-dropdown {
+    display: block;
+}
+
+.glyph-image.glyph-outline {
+    width: 100vw;
+    height: calc(100dvh - calc(var(--default-line-height) + 4px));
+}
+
+.glyph-image.glyph-preview {
+    width: 100%;
+    height: 100%;
 }
 
 .glyph-image .glyph-svg {
     vertical-align: top;
     object-fit: contain;
-    width: 100vw;
-    height: calc(100dvh - calc(var(--default-line-height) * 2 + 10px));
+    width: 100%;
+    height: 100%;
 }
 
 .glyph-image .axis {
@@ -111,9 +255,32 @@ header {
 .glyph-image .font-width-line {
     stroke: var(--font-width-line-color);
 }
+.glyph-image .glyph-preview {
+    fill: var(--glyph-preview-color);
+    stroke: transparent;
+}
+.glyph-image .refer-glyph-preview {
+    fill: var(--refer-glyph-preview-color);
+    stroke: transparent;
+}
 .glyph-image .glyph-path {
     fill: var(--glyph-fill-color);
     stroke: var(--glyph-stroke-color);
+}
+.glyph-image .curvature-comb {
+    fill: var(--curvature-comb-color);
+    stroke: none;
+}
+.glyph-image .anchor-point {
+    stroke: var(--anchor-point-color);
+    fill: color-mix(in srgb, var(--anchor-point-color) 50%, transparent);
+}
+.glyph-image .anchor-point-name {
+    fill: var(--anchor-point-name-color);
+}
+.glyph-image .glyph-path-interporation {
+    fill: var(--glyph-fill-color);
+    stroke: transparent;
 }
 .glyph-image .refer-glyph-path {
     fill: var(--refer-glyph-fill-color);
@@ -131,4 +298,61 @@ header {
 }
 .glyph-image .glyph-backward-handle {
     stroke: var(--backward-handle-color);
+}
+
+.loading-overlay {
+    position: fixed;
+    inset: 0; /* top:0; right:0; bottom:0; left:0; */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none; /* allow clicks to pass through */
+    z-index: 10000;
+}
+
+.loading {
+    pointer-events: none; /* ensure badge itself does not capture events */
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--ui-foreground-color);
+    color: var(--ui-background-color);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: var(--default-font-size);
+    box-shadow: 0 6px 18px var(--ui-shadow-color);
+}
+
+/* dots animation for "..." */
+.loading .dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: 26px;
+    justify-content: space-between;
+}
+
+.loading .dots span {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--ui-background-color);
+    opacity: 0.25;
+    transform: translateY(0);
+    animation: loading-dot 1s infinite ease-in-out;
+}
+
+.loading .dots span:nth-child(1) { animation-delay: 0s; }
+.loading .dots span:nth-child(2) { animation-delay: 0.15s; }
+.loading .dots span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes loading-dot {
+    0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+    40% { opacity: 1; transform: translateY(-4px); }
+}
+
+/* optional: slightly larger on small screens */
+@media (max-width: 480px) {
+    .loading { font-size: 13px; padding: 8px 12px; }
 }

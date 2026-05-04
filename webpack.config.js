@@ -81,9 +81,11 @@ const webExtensionConfig = {
 const webviewConfig = {
 	...baseConfig,
 	target: ["web", "es2020"],
-	entry: "./src/web/webview/main.ts",
+	entry: {
+		"preview": "./src/web/webview/preview.tsx",
+	},
 	output: {
-		filename: "webview.js",
+		filename: "[name].js",
 		path: path.join(__dirname, "./dist/web"),
 		libraryTarget: "module",
 		chunkFormat: "module",
@@ -93,8 +95,29 @@ const webviewConfig = {
 		outputModule: true,
 	},
 	resolve: {
-		extensions: [".ts", ".js"],
+		extensions: [".ts", ".tsx", ".js"],
 	},
+	module: {
+		rules: [{
+			test: /\.tsx?$/,
+			exclude: /node_modules/,
+			use: [{
+				loader: "ts-loader",
+                options: {
+                    // 明示的に webview 用 tsconfig を指定
+                    configFile: path.resolve(__dirname, "tsconfig.webview.json")
+                }
+			}],
+		}],
+	},
+	plugins: [
+		...(!process.argv.includes("production") ? [
+			new webpack.DefinePlugin({
+				"process.env.NODE_ENV": process.env.NODE_ENV,
+			}),
+		] : [
+		]),
+	],
 };
 
 module.exports = [webExtensionConfig, webviewConfig];

@@ -10,8 +10,16 @@ export function generateNonce(): string {
     return nonce;
 }
 
-export function getTabName(editor: vscode.TextEditor): string {
-    return editor.document.fileName.split(/[\\/]/).pop() ?? "";
+export function getDocumentName(document: vscode.TextDocument): string {
+    return getFileBaseName(document.fileName);
+}
+
+export function getFileBaseName(fileName: string): string {
+    return fileName.split(/[\\/]/).pop() ?? "";
+}
+
+export function isUnderDirectory(uri: vscode.Uri, dirUri: vscode.Uri): boolean {
+    return uri.fsPath.startsWith(dirUri.fsPath);
 }
 
 export function getParentUri(baseUri: vscode.Uri): vscode.Uri {
@@ -19,6 +27,15 @@ export function getParentUri(baseUri: vscode.Uri): vscode.Uri {
     const parentUri = baseUri.with({ path: parentPath });
 
     return parentUri;
+}
+
+export function sleep(millisec: number): Promise<void> {
+    return new Promise(resolve => {
+        setTimeout(
+            () => { resolve(); },
+            millisec
+        );
+    });
 }
 
 // デバッグ情報表示用

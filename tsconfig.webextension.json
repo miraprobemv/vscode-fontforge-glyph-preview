@@ -1,7 +1,6 @@
 {
 	"extends": "./tsconfig.base.json",
-	"include": ["src/**/*"],
-	"exclude": ["src/web/webview/**/*"],
+	"include": ["src/web/extension.ts", "src/web/panel/**/*", "src/web/common/**/*"],
 	"compilerOptions": {
 		"lib": [
 			"ES2020", "WebWorker"

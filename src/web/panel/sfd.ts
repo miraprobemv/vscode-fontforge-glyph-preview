@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { writeDebugLog } from "./util";
 
 export async function getGlyphFileDataAsync(
     gid: number,
@@ -24,6 +25,27 @@ export async function getGlyphFileDataAsync(
             }
         } catch (e) {
             return null;
+        }
+    }
+    return null;
+}
+
+
+export async function *iterateGlyphFileDataAsync(
+    folder: vscode.Uri,
+): AsyncGenerator<{ uri: vscode.Uri, version: number, glyphData: string[]}> {
+    const uris = await vscode.workspace.findFiles(
+        new vscode.RelativePattern(folder, "*.glyph"),
+    );
+    for (const uri of uris) {
+        try {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            const version = doc.version;
+            const glyphData = doc.getText().split("\n");
+            yield { uri, version, glyphData };
+        } catch (e) {
+            // error report & skip
+            writeDebugLog(`Error on iterateGlyphFileDataAsync(): ${e}`);
         }
     }
     return null;
